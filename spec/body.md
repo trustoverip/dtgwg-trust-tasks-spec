@@ -419,7 +419,7 @@ Every authorization decision continues to be reached under [Consumer Requirement
 
 ### Version Scheme
 
-Every [[ref: Trust Task specification]] **MUST** carry a version of the form `MAJOR.MINOR`, where `MAJOR` and `MINOR` are non-negative decimal integers without leading zeros (except for the value `0` itself). Patch-level versions are not used. The grammar, in [RFC 5234](https://www.rfc-editor.org/rfc/rfc5234), is:
+Every [[ref: Trust Task specification]] **MUST** carry a version of the form `MAJOR.MINOR`, where `MAJOR` and `MINOR` are non-negative decimal integers without leading zeros (except for the value `0` itself). Patch-level versions are not used for *Trust Task specifications*; this framework specification is itself versioned as `MAJOR.MINOR.PATCH`, per [Versioning of This Framework Specification](#versioning-of-this-framework-specification). The grammar, in [RFC 5234](https://www.rfc-editor.org/rfc/rfc5234), is:
 
 ```abnf
 version    = major "." minor
@@ -427,6 +427,16 @@ major      = "0" / nonzero *DIGIT
 minor      = "0" / nonzero *DIGIT
 nonzero    = %x31-39                 ; "1".."9"
 ```
+
+#### Versioning of This Framework Specification
+
+This framework specification is itself versioned under [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html), as `MAJOR.MINOR.PATCH`. A `MAJOR` increment marks a change that is breaking for *consumers* implementing this framework or for the specification-authoring contract of [Specification Requirements](#specification-requirements); a `MINOR` increment marks a backwards-compatible addition, such as a new optional document member or a new reserved slug; a `PATCH` increment marks a correction — errata, clarified prose, a repaired example — that changes neither the wire format nor what a conforming *Trust Task specification* must declare.
+
+The three-part form applies to **this document only**. Individual *Trust Task specifications* carry the two-part `MAJOR.MINOR` version defined above, and their *Type URIs* are unaffected by this rule.
+
+Because a `PATCH` release changes nothing a *Trust Task specification* or a *consumer* can observe, the framework is referred to elsewhere by its `MAJOR.MINOR` alone: the *target framework version* a specification declares ([Specification Requirements](#specification-requirements) item 3) and the framework schema URI a *consumer* validates the outer document against ([Consumer Requirements](#consumer-requirements) item 1) both name `MAJOR.MINOR`, and a `PATCH` increment neither mints a new framework schema nor obliges any specification to re-target.
+
+Framework releases published before this rule — `0.1` through `0.4` — denote the releases now written `0.1.0` through `0.4.0`; `0.4` and `0.4.0` are the same release, and the entries in [Appendix B](#appendix-b-changelog) are unchanged by the renumbering.
 
 ### Compatibility Rules
 
@@ -696,7 +706,7 @@ A *conforming Trust Task specification* **MUST** declare each of the following. 
 
 1. **Slug** — the lowercase slug used in the specification's *Type URI*, satisfying the grammar and reservation rules of [Type URI](#type-uri).
 2. **Version** — the `MAJOR.MINOR` version of this specification, satisfying [Version Scheme](#version-scheme).
-3. **Target framework version** — the `MAJOR.MINOR` version of this framework specification that the *Trust Task specification* targets. A *consumer* uses this declared value to select the framework schema under which the outer document is validated (see [Consumer Requirements](#consumer-requirements), item 1).
+3. **Target framework version** — the `MAJOR.MINOR` version of this framework specification that the *Trust Task specification* targets. The framework's `PATCH` component ([Versioning of This Framework Specification](#versioning-of-this-framework-specification)) is not carried in this value, because a `PATCH` release leaves the framework schema unchanged. A *consumer* uses this declared value to select the framework schema under which the outer document is validated (see [Consumer Requirements](#consumer-requirements), item 1).
 4. **Maturity level** — one of `draft`, `candidate`, `standard`, or `retired`, satisfying [Maturity Levels](#maturity-levels). A specification whose status is `retired` **SHOULD** also declare a `supersededBy` value (item 11) pointing at the successor.
 5. **Parties** — the role of each [[ref: party]] expected in a document conforming to this specification, the *VID* schemes accepted for each, and whether each of the `issuer` and `recipient` members is **REQUIRED**, **RECOMMENDED**, or **OPTIONAL** in a document. The defaults from [The `issuer` and `recipient` Members](#the-issuer-and-recipient-members) apply if the specification is silent, but explicit declaration is **RECOMMENDED**. A **REQUIRED** declaration is enforceable: a *consumer* **MUST** reject documents lacking an in-band member declared **REQUIRED** with `malformedRequest` (see [Consumer Requirements](#consumer-requirements) item 5). **RECOMMENDED** and **OPTIONAL** declarations are advisory and impose no rejection obligation. A specification identifies which party fills each framework member by tagging that party `issuer` or `recipient`; a party named only in the [[ref: payload]] — neither the document's `issuer` nor its `recipient` — carries no such tag. The requirement of the party tagged `recipient` governs the `recipient` member of a request document; because a response document swaps the parties ([Request and Response Variants](#request-and-response-variants)), the requirement of the party tagged `issuer` governs the `recipient` member of a response.
 6. **Outcome** — a non-normative prose statement of what successful execution of the task achieves between the parties. This is the human-readable counterpart to the payload schema.
@@ -1208,6 +1218,7 @@ A conformance test suite for this framework has not yet been published. The regi
 - [W3C Verifiable Credential Data Integrity 1.0](https://www.w3.org/TR/vc-data-integrity/)
 - [JSON Schema: A Media Type for Describing JSON Documents, Draft 2020-12](https://json-schema.org/draft/2020-12/schema)
 - [W3C Decentralized Identifiers (DIDs) v1.0](https://www.w3.org/TR/did-core/)
+- [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html)
 
 ### Informative References
 

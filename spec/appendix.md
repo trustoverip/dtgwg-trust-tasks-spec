@@ -108,7 +108,7 @@ If any step fails, the *consumer* returns an [[ref: error response]] per [Error 
 
 *This appendix is informative.*
 
-#### Framework version 0.4
+#### Framework version 0.4.0
 
 * **The `ceremony` member ([The `ceremony` Member](#the-ceremony-member)).** A [[ref: Trust Task document]] **MAY** now record that it is one step of a [[ref: Trust Ceremony]] — a flow composed of several [[ref: Trust Tasks]]. The framework has always modelled multi-party work as multiple bilateral tasks ([Terminology](#terminology)); what it lacked was a way for the collection to be named, identified, and evidenced, so every implementation held that knowledge in application code and no two could interoperate above the level of a single task. The member carries the [[ref: enactment]] (globally unique and non-reusable, unlike `threadId`, because evidence about a flow needs a stable anchor), the step's name, an optional content-pinned reference to a published [[ref: ceremony definition]], and an optional set of predecessor digests.
 
@@ -181,6 +181,8 @@ If any step fails, the *consumer* returns an [[ref: error response]] per [Error 
     The section states plainly what the mechanism does not do. The digest attests content, not authenticity; it is load-bearing because the *citing artifact* signs it, and a `proof`-stripped copy of a genuine document reproduces the same value by design. It is also **not** the document identity of [Consumer Requirements](#consumer-requirements) item 11, which asks which serialization arrived and counts a re-signed `proof` as a different document — that distinction is `idConflict` and remains untouched. Additive and non-breaking: no document member is added, and no existing citation becomes non-conforming.
 
 * **`trust-task-next-step` published ([Reserved Response-Type Slugs](#reserved-response-type-slugs)).** The continuation response reserved since 0.1 now has a registry entry defining its payload. A *next step* is a **third** disposition alongside the success response and the *error response*: the two of those close the originating task, and a next step leaves it **open**. A *consumer* **MUST NOT** report a blocked task as an error, nor a refusal as a next step.
+
+* **This framework specification is now versioned under Semantic Versioning ([Versioning of This Framework Specification](#versioning-of-this-framework-specification)).** Framework releases are numbered `MAJOR.MINOR.PATCH`, so that an errata-only correction to this document has a number of its own instead of being folded silently into the release it corrects or inflated into a `MINOR` it does not warrant. The change is notation, not release history: this release is `0.4.0` and is the same release as `0.4`, and the earlier entries below stand as published. It applies to this document alone — individual *Trust Task specifications* keep the two-part `MAJOR.MINOR` of [Version Scheme](#version-scheme), *Type URIs* are unchanged, and because a `PATCH` release cannot alter the framework schema, the `targetFrameworkVersion` a specification declares stays two-part as well. No wire format or authoring requirement changes.
 
 #### Framework version 0.3
 
