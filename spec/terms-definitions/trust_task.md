@@ -1,0 +1,3 @@
+[[def: Trust Task, Trust Tasks, trust task, trust tasks]]
+
+~ A unit of verifiable work between two parties, formally defined by a *Trust Task specification* and exchanged as *Trust Task documents*. Each instance of work — a KYC handoff, a consent grant, a payment commitment — is a *Trust Task*. The document model defined by this framework is bilateral: each *Trust Task document* names at most one *issuer* and one *recipient*. Exchanges involving more than two parties are modeled as multiple bilateral *Trust Tasks* linked by the framework's `threadId` member (see [The `threadId` Member](#the-threadid-member)).
