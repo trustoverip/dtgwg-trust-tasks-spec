@@ -363,6 +363,21 @@ A *consumer* verifying a citation **MUST** recompute the digest from the documen
 
 **This is not the document identity of [Consumer Requirements](#consumer-requirements) item 11.** The two answer different questions and are deliberately computed differently. Item 11 and [Retry Semantics](#retry-semantics) ask *which serialization arrived*, so a re-signed `proof` over identical content makes a different document — that is the `idConflict` case, and the distinction is the whole point of the rule. A citation asks *what the document says*, so the same statement signed, unsigned, or re-signed is one document with one task digest. A specification requiring the bytes-as-received sense — [`trust-ceremony-receipt`](https://trusttasks.org/spec/trust-ceremony-receipt/0.1)'s step digest, for one — states so and computes over the document including its `proof`; it is not applying this section loosely.
 
+The framework names the two, because both have until now been called `digestMultibase` in the places they appear and the difference between them is load-bearing:
+
+| | **`taskDigest`** | **`stepDigest`** |
+|---|---|---|
+| Asks | *What does the document say?* | *Which serialization arrived?* |
+| Input | The document with its **top-level `proof` removed** | The document **including** its top-level `proof`, plus any salt the defining specification requires |
+| The same statement, signed and unsigned | One value | Two values |
+| The same content, re-signed | One value | Two values |
+| Defined by | This section | The specification that requires the bytes-as-received sense |
+| Used for | Binding a citation made outside the framework to the document it names | Chain of custody: the step chain of an [[ref: enactment]] (`ceremony.prev`, `trust-ceremony-receipt`), and the document identity [Consumer Requirements](#consumer-requirements) item 11 keys `idConflict` on |
+
+Both are computed with JCS, a multihash-tagged hash, and a multibase encoding over a *Trust Task document*, and both are carried in a member of the `DigestMultibase` shape ([Shared Schema Components](#shared-schema-components)). The **only** structural difference is the treatment of the top-level `proof`, and it is the whole of the difference in meaning: excluding it makes the digest a property of the *statement*, so that a document has one task digest whether or not anyone ever signed it; including it makes the digest a property of the *artifact*, so that a re-signed document is a different document — which is exactly what a custody chain and an `idConflict` check need it to be.
+
+These are names for prose and for implementations. Neither is a document member: the members that carry these values keep the names their own specifications give them. The naming exists because an implementation with a single function called `digestMultibase` has, in practice, picked one of these two answers and is applying it to both questions — and whichever it picked, it is wrong for one of them.
+
 > **What a task digest establishes, and what it does not** *(this note is non-normative)*
 >
 > Recomputation is unconditional: content that differs cannot produce the value, and there is no string for a substitute document to copy. That is why a digest is preferred here to the cited document's own `proof` value. A `proofValue` is a string, and a string can be pasted verbatim onto a counterfeit; it binds only behind full signature verification — canonicalize, hash, resolve the signer's verification method, verify — which costs more than the digest recompute and is unavailable entirely for the documents [When to Include a Proof](#when-to-include-a-proof) permits to carry no `proof` at all.
