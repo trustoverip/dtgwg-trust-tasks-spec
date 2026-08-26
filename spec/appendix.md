@@ -13,7 +13,7 @@ This appendix shows the elements an individual [[ref: Trust Task specification]]
 | Slug | `kyc-handoff` |
 | Version | `1.0` |
 | [[ref: Type URI]] | `https://trusttasks.org/spec/kyc-handoff/1.0` |
-| Target framework version | `0.1` |
+| Target framework version | `0.1.0` |
 | Maturity level | `draft` |
 | `issuer` party | The KYC verifier. **REQUIRED**. Accepted [[ref: VID]] schemes: `did:web`, `did:key`, `x509`. |
 | `recipient` party | The relying party (typically a bank). **REQUIRED**. Accepted *VID* schemes: `did:web`, `x509`. |
@@ -97,7 +97,7 @@ The `details` JSON Schema fragment for this code is:
 
 This document carries a `proof` member because the specification declares `proof` as **REQUIRED** in [Front Matter](#front-matter). A [[ref: consumer]]:
 
-1. Resolves the document's `type` URI to learn the *target framework version* (`0.1`) and fetches the framework schema at `https://trusttasks.org/spec/trust-task/0.1`. The outer document structure is validated against it.
+1. Resolves the document's `type` URI to learn the *target framework version* (`0.1.0`) and fetches the framework schema at `https://trusttasks.org/spec/trust-task/0.1.0`. The outer document structure is validated against it.
 2. Fetches the payload schema at the same `type` URI under content negotiation for `application/schema+json`. The `payload` is validated against it.
 3. Verifies the `proof` per [Proof](#proof) against the *VID* in `issuer`.
 4. Confirms `expiresAt` is in the future and `recipient` matches the consumer's own *VID*.
@@ -182,7 +182,11 @@ If any step fails, the *consumer* returns an [[ref: error response]] per [Error 
 
 * **`trust-task-next-step` published ([Reserved Response-Type Slugs](#reserved-response-type-slugs)).** The continuation response reserved since 0.1 now has a registry entry defining its payload. A *next step* is a **third** disposition alongside the success response and the *error response*: the two of those close the originating task, and a next step leaves it **open**. A *consumer* **MUST NOT** report a blocked task as an error, nor a refusal as a next step.
 
-* **This framework specification is now versioned under Semantic Versioning ([Versioning of This Framework Specification](#versioning-of-this-framework-specification)).** Framework releases are numbered `MAJOR.MINOR.PATCH`, so that an errata-only correction to this document has a number of its own instead of being folded silently into the release it corrects or inflated into a `MINOR` it does not warrant. The change is notation, not release history: this release is `0.4.0` and is the same release as `0.4`, and the earlier entries below stand as published. It applies to this document alone — individual *Trust Task specifications* keep the two-part `MAJOR.MINOR` of [Version Scheme](#version-scheme), *Type URIs* are unchanged, and because a `PATCH` release cannot alter the framework schema, the `targetFrameworkVersion` a specification declares stays two-part as well. No wire format or authoring requirement changes.
+* **This framework specification is now versioned under Semantic Versioning ([Versioning of This Framework Specification](#versioning-of-this-framework-specification)).** Framework releases are numbered `MAJOR.MINOR.PATCH` and published at the full three-part version: this document's *Type URI* becomes `https://trusttasks.org/spec/trust-task/0.4.0`, and the `targetFrameworkVersion` a specification declares is that same three-part value. The point of the `PATCH` component is that errata to a published framework version get a number and a URI of their own. Previously they had nowhere to go: correcting `0.4` in place is exactly what [Stability](#stability) forbids for every other artifact in the registry, and minting `0.5` for a typo overstates what changed.
+
+    **It applies to this document alone.** Individual *Trust Task specifications* keep the two-part `MAJOR.MINOR` of [Version Scheme](#version-scheme) — including the framework-defined ones, so `trust-task-error/0.4` is unchanged — and no *Type URI* outside the reserved `trust-task` slug moves.
+
+    **Nothing already published stops resolving.** `0.1` through `0.4` denote `0.1.0` through `0.4.0`; `0.4` and `0.4.0` are the same release, and the entries below stand as published. A two-part `targetFrameworkVersion` resolves as `M.N.0`, and the registry continues to serve the two-part framework URIs as aliases. Specifications published or re-issued from this version onward declare the three-part form. The document wire format is unchanged.
 
 #### Framework version 0.3
 
