@@ -811,6 +811,20 @@ A *conforming Trust Task specification* **MUST** declare each of the following. 
 
     A `transient` declaration does **not** disapply [Consumer Requirements](#consumer-requirements) item 11. That record is a digest of what was accepted rather than a copy of the document's contents, and a *consumer* retains it for the acceptance window of item 13 whatever this class says — the two are not in tension, and a specification whose data must genuinely not outlive the exchange is served by the digest precisely because a digest is not the data.
 
+19. **Free-text members** — for every member of its `payload` whose value is free text, meaning a string whose content no enumeration, pattern, or external vocabulary constrains, a *Trust Task specification* **MUST**:
+
+    1. Declare a `maxLength` in the payload JSON Schema.
+    2. State who reads the value — an operator, an approver, a log, a downstream system, nobody — and whether the *recipient party* is expected to retain it (item 18).
+    3. State whether the value is trusted. Where it is authored by any party other than the one whose signature covers the document's assertions, the specification **MUST** say so explicitly and **MUST** require that any surface rendering it attribute it to its author.
+
+    Such a member **SHOULD** be **OPTIONAL**, and a specification **SHOULD** prefer a closed enumeration the specification itself defines — which [Naming Conventions](#naming-conventions) item 4 already governs — accompanied where genuinely needed by one bounded, optional note, over a free-text member carrying the meaning that the enumeration should have carried.
+
+    `task-consent/request/0.1`'s `note` is the pattern to copy: 500 characters, optional, attributed on every rendering surface to the `requester` who wrote it, declared **explicitly untrusted** as the one member of that payload whose prose the executor did not author, and forbidden from substituting for, reordering, or obscuring the executor-authored effects it appears beside. Every one of those constraints is in the specification, where the party who knows what the field is for could state it.
+
+    Two things drive the rule. The first is **disclosure**: a free-text member is the one place in a *Trust Task document* where the schema constrains the shape and nothing constrains the content, so it is where personal data arrives in a task that declares it ingests none ([Specification Requirements](#specification-requirements) item 14), where a secret arrives pasted by a person who was asked for a reason, and where instructions addressed to a downstream reader arrive in a field the specification believed was a comment. A bound and a stated audience do not prevent that, but they are the minimum that lets a *consumer* reason about it, and an unbounded field cannot be reasoned about at all. The second is **wire cost**: an unbounded string is an unbounded document. [Parser Hardening](#parser-hardening) has a *consumer* bound the body at the transport layer, which is the right defence and the wrong place to decide the number — a transport-layer limit is one figure for every task the *consumer* implements, where only the specification knows whether this field is a reason code or a paragraph. Declaring the bound in the schema also makes it validatable, so an oversized value is refused as `malformedRequest` by the pipeline every *consumer* already runs rather than by a limit each one picks for itself.
+
+    A member whose content *is* constrained — an enumerated status, a *VID*, a *Type URI*, a timestamp, a value carried verbatim from an external vocabulary ([Naming Conventions](#naming-conventions) item 5) — is not free text and this item does not reach it.
+
 A worked example of a *Trust Task specification* satisfying these requirements appears in [Appendix A](#appendix-a-example-trust-task-specification).
 
 ## Error Responses
