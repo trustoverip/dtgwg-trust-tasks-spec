@@ -1,56 +1,1237 @@
-## {{First Level Section Name}}
+## Trust Task Documents
 
-{{Every top-level section MUST include exactly one of the following two sentences immediately after the section header:
-This section is normative.
-This section is informative.
-The first sentence MUST be used if the section contains any normative requirements expressed using RFC keywords. The second sentence MUST be used if the section does NOT contain any normative requirements (and therefore MUST NOT contain any RFC keywords). As a general best practice, all normative sections SHOULD be grouped together.}}
+*This section is normative.*
 
-{{Each new section or subsection SHOULD begin with at least a sentence or paragraph introducing the purpose of that section.}}
+A [[ref: Trust Task document]] is a single JSON object. The framework deliberately does **not** define a separate envelope: type, version, identifier, and integrity metadata are members of the document itself. This simplifies validation — one object, one schema composition — and removes the ambiguity of "is this field on the wrapper or the body?"
 
-### {{Second Level Section Name}}
+### Encoding
 
-{{Each new section or subsection SHOULD always begin with at least a sentence or paragraph introducing the purpose of that section.}}
+A *Trust Task document* **MUST** be a JSON object as defined in [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259). The document **MUST** be encoded as UTF-8 without a byte-order mark.
 
-#### {{Third Level Section Name}}
+### Top-Level Members
 
-{{Each new section or subsection SHOULD always begin with at least a sentence or paragraph introducing the purpose of that section.}}
+A *Trust Task document* has the following top-level members.
 
-{{A bit about the [[ref: VTC]] for your info... (just showing an example glossary reference here in the text)}}
+| Member | Required | Type | Description |
+|---|---|---|---|
+| `id` | **MUST** | string | The [[ref: Document identifier]] — a globally unique string for this instance of the task. UUIDv4 is **RECOMMENDED**; any uniquely-assignable string is permitted. See [The `id` Member](#the-id-member). |
+| `threadId` | **MAY** | string | The [[ref: Thread identifier]] — correlates this document with others in the same logical exchange (e.g. a response back to its originating request). See [The `threadId` Member](#the-threadid-member). |
+| `parentThreadId` | **MAY** | string | The [[ref: Parent thread identifier]] — the `threadId` of the exchange that contains this one, where this exchange is conducted inside another. See [The `parentThreadId` Member](#the-parentthreadid-member). |
+| `ceremony` | **MAY** | object | Records that this document is a step of a [[ref: Trust Ceremony]] — a flow composed of several [[ref: Trust Tasks]]. See [The `ceremony` Member](#the-ceremony-member). |
+| `type` | **MUST** | string (URI) | The [[ref: Type URI]] identifying the [[ref: Trust Task specification]] and version this document conforms to. See [The `type` Member](#the-type-member). |
+| `issuer` | **MAY** | string (VID) | A [[ref: Verifiable Identifier]] identifying the [[ref: party]] responsible for the document's content. See [The `issuer` and `recipient` Members](#the-issuer-and-recipient-members). |
+| `recipient` | **MAY** | string (VID) | A *Verifiable Identifier* identifying the *party* the *issuer* expects to act upon the document. See [The `issuer` and `recipient` Members](#the-issuer-and-recipient-members). |
+| `issuedAt` | **SHOULD** | string (date-time) | An [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339) timestamp recording when the document was produced. |
+| `expiresAt` | **MAY** | string (date-time) | An [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339) timestamp after which the document is no longer valid **to accept**. Where `expiresAt` is specified, the [[ref: recipient party]] **MUST** honor the expiry: a [[ref: consumer]] **MUST NOT** act upon a document for which `now ≥ expiresAt` (inclusive bound; the instant `expiresAt` is itself treated as expired). A *consumer* **MAY** apply a small clock-skew tolerance, typically ≤ 60 seconds, when evaluating this comparison. `expiresAt` bounds **acceptance**, not execution: it does not abort work already under way (see [Consumer Requirements](#consumer-requirements) item 12). See [Consumer Requirements](#consumer-requirements). |
+| `payload` | **MUST** | object | The task-specific body. Its internal structure is governed by the *Trust Task specification* identified by `type`. See [The `payload` Member](#the-payload-member). |
+| `@context` | **MAY** | string \| array \| object | If present, enables JSON-LD processing of the document. See [JSON-LD Compatibility](#json-ld-compatibility). |
+| `proof` | **MAY** | object | An optional integrity proof. See [Proof](#proof). |
 
-{{When nesting sections it is RECOMMENDED to go no more than three levels deep. Use as many sections as is necessary to cover all the requirements of the specification, but keep the text and diagrams as concise as possible. [See this IETF guidance](https://www.ietf.org/archive/id/draft-flanagan-7322bis-07.html#name-body-of-the-memo).}}
+A *Trust Task document* **MAY** contain additional top-level members beyond those listed above. Member names beginning with `x-` are **RESERVED** for experimental extensions and **MUST NOT** be used in a published *Trust Task specification*.
+
+> **Example 1 — A complete Trust Task document** *(non-normative)*
+>
+> ```json
+> {
+>   "id": "4f3c9e2a-1b81-4d3e-9b51-7a3c89e3d1f2",
+>   "type": "https://trusttasks.org/spec/kyc-handoff/1.0",
+>   "issuer": "did:web:verifier.example",
+>   "recipient": "did:web:bank.example",
+>   "issuedAt": "2026-04-12T09:31:00Z",
+>   "expiresAt": "2027-04-12T09:31:00Z",
+>   "payload": {
+>     "subject": "did:key:z6Mk...",
+>     "result": "passed",
+>     "level": "LOA2"
+>   }
+> }
+> ```
+>
+> The `payload` member is the only part whose internal shape is defined by the per-task specification; everything else is framework-defined. This example carries no `proof` member; it therefore assumes delivery over a transport that provides end-to-end integrity and authentication between [[ref: producer]] and *consumer*. A document delivered over a less protective transport, or one expected to be relied upon by third parties beyond the original *consumer*, would carry a `proof` member (see [When to Include a Proof](#when-to-include-a-proof)).
+
+### The `id` Member
+
+The `id` member's value **MUST** be a string that is globally unique to this instance of the task. The framework places no further constraint on its form: UUIDv4 [RFC 9562](https://www.rfc-editor.org/rfc/rfc9562) is **RECOMMENDED** as a low-coordination default that requires no namespace ownership, but any string an implementation can guarantee unique is permitted — for example, a DID URL, a UUIDv7, a URN, or an opaque content-addressed identifier. Producers **MUST NOT** reuse an `id` value across documents.
+
+The `id` is opaque to the framework. Resolvability of the `id` (the ability to dereference it back to the document) is not required. Where resolvability is needed for a particular use case, an individual *Trust Task specification* or transport binding **MAY** require a more specific form (for example, a DID URL).
+
+### The `type` Member
+
+The `type` member's value **MUST** be a *Type URI* in the form defined in [Type URI](#type-uri). The version of the *Trust Task specification* a document conforms to is conveyed by the trailing `<MAJOR.MINOR>` segment of this URI; no separate version member is carried in the document.
+
+A `type` URI **MAY** carry a fragment identifier. The framework reserves the fragments `#request` and `#response` to disambiguate the two directions of a request/response exchange that share a single *Trust Task specification*; see [Request and Response Variants](#request-and-response-variants).
+
+#### Request and Response Variants
+
+A single *Trust Task specification* often describes both a *request* document (the document a *producer* sends to initiate the task) and a *response* document (the document the *consumer* returns when the task completes successfully). The framework distinguishes the two via the fragment of the `type` URI:
+
+| `type` form | Meaning |
+|---|---|
+| `https://trusttasks.org/spec/<slug>/<MAJOR.MINOR>` | Request document. Implicitly equivalent to the explicit form below. |
+| `https://trusttasks.org/spec/<slug>/<MAJOR.MINOR>#request` | Request document, explicit form. |
+| `https://trusttasks.org/spec/<slug>/<MAJOR.MINOR>#response` | Success-response document for the same specification. |
+
+The rules:
+
+1. A *Trust Task document* whose `type` URI carries **no fragment** or the fragment `#request` is a *request*. The two forms are semantically equivalent; producers **MAY** emit either, consumers **MUST** accept both.
+2. A *Trust Task document* whose `type` URI carries the fragment `#response` is the *success response* of a request whose `type` is the same URI with the fragment stripped. The request and response are correlated by `threadId` per [The `threadId` Member](#the-threadid-member).
+3. The fragments `#request` and `#response` are **RESERVED** for this purpose. An individual *Trust Task specification* **MUST NOT** assign other fragment meanings to its `type` URI.
+4. A *failure* response is **not** a `#response`-variant document of the request's *Type URI*. Failures are reported via the framework's distinct `trust-task-error` *Type URI* per [Error Responses](#error-responses).
+5. Consumers **MUST** preserve the fragment when comparing `type` URIs, when routing documents internally, and when keying hash maps on `type`. A consumer that strips the fragment before keying will conflate request and response documents.
+6. The payload JSON Schema for a request/response pair is published as a single schema document at the bare *Type URI* (no fragment). Within that schema, the request payload shape is the top-level schema (or the schema reachable via `$anchor: "request"`); the response payload shape is reachable via `$anchor: "response"`. See [Specification Requirements](#specification-requirements) for the publishing requirements.
+
+A specification that defines a fire-and-forget task — one with no expected success response document — declares no response sub-schema. Its consumers signal success implicitly (by the absence of a `trust-task-error` reply) and **MUST NOT** emit a `#response`-variant document for that specification.
+
+### The `payload` Member
+
+The `payload` member's value **MUST** be a JSON object whose internal structure is defined by the *Trust Task specification* identified by the document's `type`. This framework places no constraint on the contents of `payload` beyond requiring that it be an object.
+
+The framework separates document-level metadata (`id`, `threadId`, `type`, `issuer`, `recipient`, `issuedAt`, `expiresAt`, `proof`) from task-specific data (`payload`) so that a single framework-level schema validates the outer structure, with per-task schemas applied only to `payload`. Schema scope is defined in [Schema Scope](#schema-scope).
+
+#### The `ext` Extension Member
+
+A *Trust Task specification* **MAY** allow an `ext` member at the top level of `payload`, at any nested object whose contents the specification controls, or both. The `ext` member is the framework's sanctioned extension point for ecosystem-defined data that the base specification does not enumerate.
+
+The framework reserves the following normative rules for any `ext` member, in any specification:
+
+1. `ext` **MUST** be a JSON object when present.
+2. Each *immediate* key of `ext` **MUST** match the reverse-DNS grammar `^[a-z][a-z0-9-]*(\.[a-z0-9-]+)+$` — lowercase, at least one dot. Examples: `vnd.affinidi.webvh`, `org.example.acl`. Bare keys without a namespace are non-conforming.
+3. The structure under each namespace is opaque to the framework. Producers MAY place any JSON value the namespace's controller chooses to define.
+4. A *producer* **MUST NOT** rely on any framework-level meaning for the contents of any `ext.*` namespace.
+5. A *consumer* **MUST** ignore namespaces it does not recognize, consistent with the unrecognized-member rule of [Consumer Requirements](#consumer-requirements). A *consumer* **MAY** require its own namespace as a matter of local policy and reject documents lacking that namespace with `malformedRequest`.
+6. The framework reserves **no** `ext.*` namespace today. [[ref: Trust Task specifications]] **MUST NOT** define cross-specification semantics for any `ext` key; ecosystem semantics belong to the namespace controller.
+
+A *Trust Task specification* opts into `ext` at a given object level by including a property named `ext` (typically a `$ref` to the framework's published `Ext` `$def`) and adjusting that level's `additionalProperties` declaration accordingly. Specifications that do not include `ext` at a given level reject the member at that level under their existing `additionalProperties: false`.
+
+The signed envelope covers `ext` in the same way it covers any other member of `payload`, so `ext` inherits the integrity guarantees of [Proof](#proof) when a `proof` is present.
+
+`ext` is distinct from the task-specific `details` member of a `trust-task-error` response ([Extension by Individual Trust Task Specifications](#extension-by-individual-trust-task-specifications)). `details` carries structured data tied to a specific error `code` defined by the spec author; `ext` carries vendor-namespaced extension data defined by the ecosystem. Both members **MAY** appear on the same document and are not interchangeable.
+
+### JSON-LD Compatibility
+
+A *Trust Task document* **MAY** include an `@context` member. If present, the document **MUST** be processable as JSON-LD; the framework places no further constraint on the contents of `@context` beyond requiring it to be a string, an array of strings or objects, or an object, in line with the JSON-LD specification. A *Trust Task specification* that wishes to declare a canonical JSON-LD context **MUST** publish it at its *Type URI* under content negotiation for `application/ld+json` (see [Content Negotiation](#content-negotiation)).
+
+A *consumer* that does not implement JSON-LD processing **MUST** ignore the `@context` member and process the document as plain JSON. JSON-LD support is therefore strictly additive — no consumer is required to implement it, and no document is required to include it.
+
+> **Example 2 — A Trust Task document with a JSON-LD context** *(non-normative)*
+>
+> ```json
+> {
+>   "@context": [
+>     "https://www.w3.org/ns/credentials/v2",
+>     "https://trusttasks.org/spec/kyc-handoff/1.0"
+>   ],
+>   "id": "urn:uuid:7d8b1e3a-9a72-4f86-9d04-2a4b6c2c5e10",
+>   "type": "https://trusttasks.org/spec/kyc-handoff/1.0",
+>   "issuer": "did:web:verifier.example",
+>   "recipient": "did:web:bank.example",
+>   "issuedAt": "2026-04-12T09:31:00Z",
+>   "payload": {
+>     "subject": "did:key:z6Mk...",
+>     "result": "passed",
+>     "level": "LOA2"
+>   }
+> }
+> ```
+>
+> A *consumer* that implements JSON-LD processes the document accordingly; a *consumer* that does not implement JSON-LD ignores `@context` and processes the same document as plain JSON. The two interpretations validate against the same payload schema.
+
+### Proof
+
+A *Trust Task document* **MAY** include a `proof` member whose value is a W3C [[ref: Data Integrity Proof]] object as defined in [VC Data Integrity](https://www.w3.org/TR/vc-data-integrity/). When present, the `proof` binds the document's content to its `issuer`.
+
+The choice of cryptographic suite is open: any suite registered by the W3C Verifiable Credential Working Group (for example, `eddsa-rdfc-2022` or `ecdsa-rdfc-2019`, or any future suite) **MAY** be used. The `verificationMethod` of the proof **MUST** resolve to verification material controlled by the *party* identified by the document's `issuer` member (see [The `issuer` and `recipient` Members](#the-issuer-and-recipient-members)).
+
+When `proof` is present, it covers the document with `proof` itself excluded from the signed content, per the canonicalization rules of the chosen Data Integrity suite.
+
+#### When to Include a Proof
+
+The default rules governing the presence of `proof` in a *Trust Task document* are:
+
+* If the document is delivered over a transport that already provides end-to-end integrity and authentication between *producer* and *consumer* — for example, mutually-authenticated TLS or a signed DIDComm envelope — `proof` **MAY** be omitted.
+* If the document is delivered over a transport that does not provide such guarantees, or where tampering or substitution by intermediaries is possible, `proof` **SHOULD** be included.
+* If a strong, transport-independent guarantee of non-tampering and of *producer* identity is required — typically because the document is intended to be retained, replayed, or relied on by parties beyond the original *consumer* — `proof` **MUST** be included.
+
+Whenever `proof` is included, the [Audience Binding](#audience-binding) rule also applies: the *producer* commits to an in-band `recipient` so that the proof binds not only the content but also the intended audience.
+
+An individual *Trust Task specification* **MAY** strengthen these defaults (for example, mandate `proof` regardless of transport) but **MUST NOT** weaken them. The declaration each *Trust Task specification* makes about its own `proof` requirement is governed by [Specification Requirements](#specification-requirements).
+
+### The `issuer` and `recipient` Members
+
+A *Trust Task document* **MAY** identify the parties involved by including the `issuer` and `recipient` members at the top level of the document.
+
+* `issuer` — a *Verifiable Identifier* (see [Terminology](#terminology)) identifying the *party* responsible for the document's content. When `proof` is present, the `issuer` **MUST** identify the entity to which the proof's `verificationMethod` resolves.
+* `recipient` — a *Verifiable Identifier* identifying the *party* the *issuer* expects to act upon the document.
+
+The framework does not constrain the VID scheme used: a DID, an X.509 subject, an OIDC subject identifier, a key thumbprint, or any other identifier whose controller is verifiable under the *consumer*'s trust framework is acceptable.
+
+A [[ref: VID]] is compared by exact string equality wherever this framework requires a VID-to-VID comparison (notably the in-band-vs-transport cross-check in [Precedence of In-Band over Transport-Derived Identity](#precedence-of-in-band-over-transport-derived-identity), the recipient-enforcement rule in [Consumer Requirements](#consumer-requirements) item 5, and the proof-binding rule in [Proof](#proof)). *Producers* **SHOULD** emit *VID*s in their canonical form for the scheme in use — no leading or trailing whitespace, no normalization of case-sensitive segments, and (for schemes that admit equivalent forms) the form that the scheme's authority designates as canonical. A *consumer* **MAY** reject a *Trust Task document* whose `issuer`, `recipient`, or any *VID*-typed `payload` member is not in canonical form with `malformedRequest`; a *consumer* that accepts non-canonical input **MUST NOT** silently normalize before applying any framework rule that compares the value — normalization changes the string, and the framework's comparisons are over the unchanged bytes.
+
+Both members are **OPTIONAL**. Their purpose is to let the parties be identified in-band where the transport in use does not already convey strong, authenticated party identity — for example, an unauthenticated HTTP POST, a public message queue, or paper hand-off.
+
+Where a secure transport already conveys authenticated party identity (such as mutually-authenticated TLS or a signed DIDComm envelope), these in-band members **MAY** be omitted.
+
+#### Precedence of In-Band over Transport-Derived Identity
+
+The framework treats the in-band `issuer` and `recipient` members as **authoritative** for party identity. Specifically, for each party:
+
+1. **If the in-band member is present**, its value is the party identity that the *consumer* **MUST** apply for every subsequent framework rule that references that party — including, but not limited to, `proof` verification (where applicable, see [Proof](#proof)), recipient enforcement (see [Consumer Requirements](#consumer-requirements), item 5), and *Trust Task specification* requirements that reference the party. The transport-derived identity is, in this case, **only a cross-check**: where both an in-band identity and a transport-derived identity are present for the same party, they **MUST** be consistent, and a *consumer* **MUST** treat a mismatch as a validation failure (see [Consumer Requirements](#consumer-requirements), item 6).
+2. **If the in-band member is absent**, a *consumer* **MAY** derive the party identity from the transport — typically via the [[ref: transport binding]] in use (see [Transport Bindings](#transport-bindings)) — and **MAY** treat the derived value as if it had been carried in-band for the purposes of subsequent rules. A *consumer* with no in-band value and no transport-derived value for a party that the *Trust Task specification* declares as **REQUIRED** **MUST** reject the document.
+
+In short: the document is the source of truth for who the parties are. The transport, when it provides authenticated identity, is used either to fill in what the document omits, or to verify what the document asserts — never to override it.
+
+An individual *Trust Task specification* **MAY** require either or both members to be present — for example, to support audit, third-party replay, or forwarding — but **MUST NOT** prohibit a *consumer* from comparing them with transport-derived identity.
+
+> **Example 3 — A Trust Task document using non-DID [[ref: Verifiable Identifiers]]** *(non-normative)*
+>
+> ```json
+> {
+>   "id": "urn:uuid:0e9d4c2b-5f81-4d3e-9b51-7a3c89e3d1f2",
+>   "type": "https://trusttasks.org/spec/kyc-handoff/1.0",
+>   "issuer": "x509:CN=Verifier,O=Example Verifier Ltd,C=NL",
+>   "recipient": "x509:CN=Bank,O=Example Bank,C=NL",
+>   "issuedAt": "2026-04-12T09:31:00Z",
+>   "payload": {
+>     "subject": "oidc:https://issuer.example/sub#user-94217",
+>     "result": "passed",
+>     "level": "LOA2"
+>   }
+> }
+> ```
+>
+> Here `issuer` and `recipient` are X.509 subject distinguished names and `payload.subject` is an OIDC subject identifier. The framework treats any string identifier whose controller is verifiable under the *consumer*'s trust framework as a valid *VID*; DIDs are one realization among several.
+
+#### Audience Binding
+
+When a *Trust Task document* carries a `proof` member, the document **MUST** also carry an in-band `recipient` member, unless the *Trust Task specification* identified by the document's `type` declares itself a *bearer specification* (see [Bearer Specifications](#bearer-specifications)).
+
+This rule exists because a *Data Integrity Proof* covers the signed bytes — the *issuer*, [[ref: payload]], and other framework members — but does **not** cover any transport-derived identity. A document signed without an in-band `recipient` therefore provides no cryptographic binding between the *producer*'s assertion and the intended audience: an attacker who obtains the document — from a *consumer*'s storage, an intermediate cache, or an exfiltration — can replay the bytes to a different *consumer* without any signal that the original *producer* did not intend that audience to act upon them. A consumer receiving such a replayed document would otherwise verify the proof successfully, observe that no `recipient` constrains the assertion, and apply the producer's claim to its own context.
+
+A *consumer* receiving a `proof`-carrying document with no in-band `recipient`, where the originating *Trust Task specification* is not a *bearer specification*, **MUST** reject the document with a `malformedRequest` [[ref: error response]] (see [Error Responses](#error-responses)).
+
+Specifications that declare `proof` as **REQUIRED** (see [Specification Requirements](#specification-requirements) item 8) implicitly require `recipient` in-band for all non-bearer cases; the audience-binding rule and the proof requirement combine to ensure the document is self-contained for both producer identity and intended audience.
+
+#### Bearer Specifications
+
+A *Trust Task specification* whose `payload` carries an assertion meaningful to any *consumer* that can verify the *producer*'s identity — for example, a public attestation, a heartbeat, or a schema-publication announcement — **MAY** opt out of the [Audience Binding](#audience-binding) rule by declaring itself a *bearer specification*. The opt-out is published in the specification's front matter (see [Specification Requirements](#specification-requirements) item 12).
+
+A *bearer specification* makes an explicit, normative claim that documents conforming to it are intended for unspecified consumption: any party that can verify the document's `proof` (where present) is a legitimate recipient.
+
+A *bearer specification* **MUST**:
+
+1. Declare `bearer: true` in its front matter.
+2. Declare its `recipient` party requirement as **OPTIONAL** (the audience-binding rule no longer applies).
+3. State in its prose what assertion the document conveys and why audience binding is inappropriate for it.
+
+A *bearer specification* **SHOULD NOT** carry any field in `payload` whose interpretation depends on the receiving party's identity (for example, "balance owed *to you*"); such fields belong in audience-bound specifications.
+
+The default for any *Trust Task specification* is **non-bearer**. Specifications **MUST NOT** declare themselves bearer unless the audience-free property is intrinsic to the assertion they publish.
+
+### The `threadId` Member
+
+Every *Trust Task document* carries its own unique `id` ([The `id` Member](#the-id-member)); a response document **MUST NOT** reuse the `id` of the document it is responding to. Correlating documents back to one another — for example, linking a response to its originating request — is the purpose of the `threadId` member, not the `id` member.
+
+A *Trust Task document* **MAY** include a `threadId` member that correlates it with other [[ref: Trust Task documents]] belonging to the same logical exchange — for example, a request and its response, or a request, an intermediate `trust-task-next-step` response, and the final result.
+
+A *producer* that emits a *Trust Task document* in response to another *Trust Task document* **SHOULD** set `threadId` to the value of the originating document's `threadId`. If the originating document carried no `threadId`, the *producer* **SHOULD** set `threadId` to the value of the originating document's `id`. The effect of this convention is that every document in a logical exchange carries the same `threadId`, and that value can always be traced back to the `id` of the document that started the thread.
+
+The framework places no constraint on the form of a `threadId` beyond requiring it to be a string. Producers initiating a new exchange **MAY** omit `threadId` entirely (single-shot tasks need no thread), **MAY** mint a fresh value (e.g. a UUID), or **MAY** reuse the document's own `id`.
+
+`threadId` carries no normative validation semantics. *Consumers* **MUST NOT** reject a document on the basis of `threadId` alone, but **MAY** use it for routing, correlation, aggregation, or audit.
+
+#### Naming an Exchange from Outside the Framework
+
+A `threadId` names one exchange and expresses no relationship to any other. Exchanges nest in practice — a [[ref: Trust Task]] conducted to complete a step of some broader interaction is still its own exchange, with its own `threadId`. The optional `parentThreadId` member ([The `parentThreadId` Member](#the-parentthreadid-member)) records that containment, but it is a navigation aid: it does not change which exchange attests an event, and the rule below holds whether or not it is present.
+
+This matters whenever something outside the framework refers to an exchange as evidence that an event occurred: a credential that cites the exchange which established what it attests, an audit record, a governance decision that turns on some task having been performed. Nesting makes the reference ambiguous, because more than one thread was open when the event happened, and only one of them attests it.
+
+The rule is that such a reference **MUST** name the *innermost* exchange whose documents attest the event being cited, and **MUST** name it by the `id` of the document that initiated that exchange — the value every document in the thread traces back to under the convention above ([The `id` Member](#the-id-member) makes that `id` globally unique and non-reusable, which a `threadId` is not required to be).
+
+Naming an enclosing exchange instead collects evidence of the wrong event. Where a witnessing ceremony is conducted inside a broader relationship exchange, for example, only the ceremony's own response attests that the witnessing took place; the enclosing exchange's response attests the relationship interaction and says nothing about the witnessing. A consumer verifying the outer reference would conclude something the documents do not support.
+
+Naming the right exchange is necessary but not sufficient: an `id` identifies a document without binding the citation to it, so a citation relied upon outside the exchange also carries a digest over the document it names. See [Binding a Citation to the Document It Names](#binding-a-citation-to-the-document-it-names).
+
+#### The `parentThreadId` Member
+
+A *Trust Task document* **MAY** include a `parentThreadId` member whose value is the `threadId` of the exchange that contains this one. Its purpose is navigation: it lets a party holding a document from the inner exchange find the exchange it was conducted within, which a flat `threadId` cannot express.
+
+The member takes the same posture as `threadId` ([The `threadId` Member](#the-threadid-member)):
+
+* A *producer* that emits a *Trust Task document* within an enclosing exchange **SHOULD** set `parentThreadId` to that exchange's `threadId`, and **SHOULD** carry the same value onto every document of the inner exchange — including its *response* and any *error response* — since the whole exchange shares one parent.
+* A *producer* **MUST NOT** set `parentThreadId` equal to the document's own `threadId`. An exchange cannot contain itself.
+* `parentThreadId` carries no normative validation semantics. *Consumers* **MUST NOT** reject a document on the basis of `parentThreadId` alone, but **MAY** use it for routing, correlation, aggregation, or audit.
+
+The member records **one** level of containment. Reconstructing a deeper ancestry requires the intervening documents, and the framework defines no representation for a full chain; a specification needing one is better served by an explicit payload structure than by inferring it from thread metadata.
+
+Where the transport carries its own parent-thread concept, the two **MUST** agree when both are present, and the in-band member remains authoritative for framework-level processing; see [What a Transport Binding Specifies](#what-a-transport-binding-specifies). A transport binding that maps the two states the rule for its own protocol.
+
+> **Example 4a — A ceremony nested inside a broader exchange** *(non-normative)*
+>
+> A relationship exchange is under way on thread `9b1d…`. Completing it requires a witnessing ceremony, which is its own *Trust Task* exchange with its own thread:
+>
+> ```json
+> {
+>   "id": "urn:uuid:2c7f5e10-6a4b-4f8e-9d31-0b6a2f4c8e15",
+>   "type": "https://trusttasks.org/spec/webvh/witness/publish/0.1",
+>   "threadId": "urn:uuid:4a0e2b77-88c1-4d55-9f2a-6c3d1e5b7a92",
+>   "parentThreadId": "9b1d3f60-52a8-4c17-8e44-1d9c7b05f3ae",
+>   "issuer": "did:web:witness.example",
+>   "recipient": "did:web:host.example",
+>   "issuedAt": "2026-08-08T10:15:00Z",
+>   "payload": { "…": "…" }
+> }
+> ```
+>
+> A credential citing the witnessing as evidence anchors to this inner exchange, per [Naming an Exchange from Outside the Framework](#naming-an-exchange-from-outside-the-framework) — the enclosing exchange attests the relationship interaction, not the witnessing. The `parentThreadId` is what lets a holder of this document find that enclosing exchange; it is not what the citation names.
+
+> **Example 4 — Request and response correlated by `threadId`** *(non-normative)*
+>
+> A *producer* issues an initiating *Trust Task document*:
+>
+> ```json
+> {
+>   "id": "4f3c9e2a-1b81-4d3e-9b51-7a3c89e3d1f2",
+>   "type": "https://trusttasks.org/spec/kyc-handoff/1.0",
+>   "issuer": "did:web:verifier.example",
+>   "recipient": "did:web:bank.example",
+>   "issuedAt": "2026-04-12T09:31:00Z",
+>   "payload": { "subject": "did:key:z6Mk...", "result": "passed", "level": "LOA2" }
+> }
+> ```
+>
+> The original document carried no `threadId`, so the responding *party* sets `threadId` to the originating document's `id`:
+>
+> ```json
+> {
+>   "id": "8a91c7b3-2e62-4a91-a3a4-9d61b75e2f01",
+>   "type": "https://trusttasks.org/spec/trust-task-error/0.2",
+>   "threadId": "4f3c9e2a-1b81-4d3e-9b51-7a3c89e3d1f2",
+>   "issuer": "did:web:bank.example",
+>   "recipient": "did:web:verifier.example",
+>   "issuedAt": "2026-04-12T09:33:00Z",
+>   "payload": { "code": "proofRequired", "retryable": false }
+> }
+> ```
+>
+> Both documents now share `threadId = 4f3c9e2a-1b81-4d3e-9b51-7a3c89e3d1f2`; any subsequent document in this exchange — for example, a retry with a fresh `id` and a valid `proof` — would carry the same `threadId`.
+
+#### Binding a Citation to the Document It Names
+
+[Naming an Exchange from Outside the Framework](#naming-an-exchange-from-outside-the-framework) requires an external citation to name an exchange by the `id` of the document that initiated it. An `id` is a *name*. [The `id` Member](#the-id-member) obliges a *conforming producer* to mint it globally unique and never to reuse it, but that obligation constrains conforming producers and nobody else: anyone may write a different document — different parties, different `payload` — and give it the same `id`. A consumer that pairs a citation with a document by comparing `id`s alone accepts that substitute, and then reports an event the documents do not attest.
+
+A citation that will be relied upon by parties outside the exchange **SHOULD** therefore carry, alongside the `id`, a **task digest** over the document it names. Where a citation carries one, it **MUST** be computed as:
+
+```
+taskDigest = multibase( multihash( H( JCS( document ∖ proof ) ) ) )
+```
+
+where:
+
+* `document ∖ proof` is the *Trust Task document* with its **top-level `proof` member removed** where present, and no other member removed or added. A `proof` appearing *within* `payload` — in an embedded presentation, credential, or other artifact — is part of that payload's content and **MUST NOT** be removed. Where the document carries no top-level `proof`, the input is the document unchanged; no placeholder is substituted.
+* `JCS` is the [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) canonicalization, serialized as UTF-8, as used elsewhere in this framework.
+* `H` is any hash function expressible in multihash; the multihash prefix declares which, so the algorithm is not fixed by this specification and survives an algorithm change without a format revision. SHA-256 is **RECOMMENDED**.
+* The result is encoded as a multibase-encoded multihash, per the `DigestMultibase` definition of the framework's *shared schema component* ([Shared Schema Components](#shared-schema-components)).
+
+The top-level `proof` is excluded because [Proof](#proof) already defines it as excluded from the content a `proof` covers. The digest and the document's own signature therefore commit to the same content, and a document has exactly **one** task digest whether or not anyone ever signed it. A digest whose input included `proof` would be undefined for the documents [When to Include a Proof](#when-to-include-a-proof) permits to carry none, and would change value the moment a document was signed — so a citing party and a verifying party computing it at different points in the document's life would disagree.
+
+A *consumer* verifying a citation **MUST** recompute the digest from the document it holds — removing the top-level `proof` first, where present — and **MUST** compare the **decoded multihash bytes**, not the encoded strings. `DigestMultibase` admits more than one base encoding, and two conforming encodings of the same digest are different strings; a string comparison rejects a valid pairing. A *consumer* that does not implement the hash algorithm named by the multihash prefix **MUST** treat the citation as unverified: it **MUST NOT** recompute under a different algorithm, and **MUST NOT** fall back to `id` comparison alone.
+
+**This is not the document identity of [Consumer Requirements](#consumer-requirements) item 11.** The two answer different questions and are deliberately computed differently. Item 11 and [Retry Semantics](#retry-semantics) ask *which serialization arrived*, so a re-signed `proof` over identical content makes a different document — that is the `idConflict` case, and the distinction is the whole point of the rule. A citation asks *what the document says*, so the same statement signed, unsigned, or re-signed is one document with one task digest. A specification requiring the bytes-as-received sense — [`trust-ceremony-receipt`](https://trusttasks.org/spec/trust-ceremony-receipt/0.1)'s step digest, for one — states so and computes over the document including its `proof`; it is not applying this section loosely.
+
+> **What a task digest establishes, and what it does not** *(this note is non-normative)*
+>
+> Recomputation is unconditional: content that differs cannot produce the value, and there is no string for a substitute document to copy. That is why a digest is preferred here to the cited document's own `proof` value. A `proofValue` is a string, and a string can be pasted verbatim onto a counterfeit; it binds only behind full signature verification — canonicalize, hash, resolve the signer's verification method, verify — which costs more than the digest recompute and is unavailable entirely for the documents [When to Include a Proof](#when-to-include-a-proof) permits to carry no `proof` at all.
+>
+> The digest attests **content**, not authenticity. It is load-bearing because the *citing artifact* carries it under the citer's own signature: a party cannot obtain a signature over a digest of a document the signer never saw, so a counterfeit that borrowed the `id` fails the pairing no matter who wrote it. It says nothing about whether the cited document itself was signed, and a `proof`-stripped copy of a genuine document reproduces the same value by design. Authenticity of the exchange comes from the documents' own proofs under [When to Include a Proof](#when-to-include-a-proof) — a specification whose citations must also establish that the cited document was attributable **MUST** require a `proof` on it, and **MUST NOT** rely on the task digest for that.
+
+### Naming Conventions
+
+JSON member names and enumerated string values in *Trust Task documents* follow the casing rules below, so that documents are consistent across specifications both for human readers and for code generators.
+
+1. **Framework-defined members.** Every member defined by this framework — `id`, `threadId`, `parentThreadId`, `type`, `issuer`, `recipient`, `issuedAt`, `expiresAt`, `payload`, `proof`, and the members of the error payload in [Error Payload](#error-payload) — **MUST** be named in **lowerCamelCase**. The sole exception is `@context`, which is named as required by JSON-LD.
+
+2. **Framework-defined values.** Enumerated string values defined by this framework — notably the standard error `code` identifiers of [Standard Error Codes](#standard-error-codes) — **MUST** be expressed in **lowerCamelCase**.
+
+3. **Payload member names.** A *Trust Task specification* **SHOULD** name the members of its `payload` in lowerCamelCase. A specification **MAY** deviate only where it embeds a member whose name is fixed by an external vocabulary (for example, a field copied verbatim from a WebAuthn or JOSE structure), and it **SHOULD** confine such foreign naming to the embedded sub-object.
+
+4. **Specification-defined values.** String values drawn from a closed set that a *Trust Task specification* itself defines — statuses, kinds, decisions, event types, extended error `code` identifiers — **SHOULD** be expressed in lowerCamelCase (for example, `cacheAndKeys`, `stepUp`, `proofInvalid`).
+
+5. **Externally-owned values.** A value whose canonical form is fixed by an external specification **MUST** be carried verbatim and **MUST NOT** be re-cased, because the framework compares such values by exact string equality (see [The `issuer` and `recipient` Members](#the-issuer-and-recipient-members)). Examples include WebAuthn enumerations (`public-key`, `cross-platform`), JOSE algorithm identifiers (`EdDSA`, `ES256`), cookie `SameSite` values (`Lax`, `Strict`), and W3C *Data Integrity* type and purpose values (`DataIntegrityProof`, `assertionMethod`).
+
+6. **Out of scope.** This section does not govern *slugs* (lowercase, hyphen-separated; [Type URI](#type-uri)) or `ext` namespace keys (reverse-DNS; [The `ext` Extension Member](#the-ext-extension-member)); each retains its own grammar.
+
+A change to the casing of an existing member name or specification-defined value is a breaking change and follows the rules of [Versioning](#versioning); the re-casing introduced in framework version 0.2 is recorded in [Appendix B](#appendix-b-changelog).
+
+### The `ceremony` Member
+
+Some outcomes take more than one *Trust Task*. A governance decision may need several endorsements; an onboarding may span a witness and a registry. The framework's model for these is settled in [Terminology](#terminology) — they are multiple bilateral *Trust Tasks* — but the collection itself has, until this version, had no name, no identifier, and no way to be evidenced.
+
+A *Trust Ceremony* is such a collection: a flow of *Trust Tasks*, optionally described by a published [[ref: ceremony definition]] ([Ceremony Namespace](#ceremony-namespace)), of which one run is an [[ref: enactment]]. A *Trust Task document* **MAY** carry a `ceremony` member recording that it is one *step* of an enactment.
+
+The member's value is an object with the following members. Its full schema is published with the framework envelope schema for this version.
+
+| Member | Required | Type | Description |
+|---|---|---|---|
+| `enactment` | **MUST** | string | Identifies one run of a ceremony. Globally unique and never reused, on the same terms as `id` ([The `id` Member](#the-id-member)). |
+| `step` | **MUST** | string | Names this step within the ceremony. |
+| `definition` | **MAY** | string (URI) | The *ceremony definition* this step is enacted under, rooted at [Ceremony Namespace](#ceremony-namespace). |
+| `definitionDigest` | **MUST** where `definition` is present | string | A multibase-encoded multihash over the [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) canonicalization of that definition. |
+| `parentEnactment` | **MAY** | string | The enactment containing this one, where a ceremony is conducted as a step of another. |
+| `round` | **MAY** | integer | Distinguishes repetitions of the same step by the same party. Absent means `1`. |
+| `terminal` | **MAY** | boolean | Marks a step that ends the enactment. |
+| `prev` | **MAY** | array | The steps this one follows, each an object of `id` and `digestMultibase`. |
+
+#### Ceremony Membership Is Optional
+
+The `ceremony` member is optional in every sense that matters, and this is a normative property rather than a convenience:
+
+1. A *Trust Task specification* **MUST NOT** declare anything about ceremonies, and needs no awareness of them. The member is carried on the document, not in `payload`, so any existing specification may be used as a ceremony step with no change to its schema and no new version.
+2. A *Trust Task document* without the member is fully conforming.
+3. A *consumer* that does not implement ceremonies **MUST** process such a document exactly as it processes any other, under the unrecognized-member rule of [Consumer Requirements](#consumer-requirements).
+
+#### The Identifiers Are Orthogonal
+
+`enactment` does not replace `threadId` and is not a form of `parentThreadId`. Within a ceremony, `threadId` scopes one step's request/response exchange exactly as it does elsewhere, and `enactment` scopes the flow across all of its steps; a *producer* sets both. The steps of an enactment are typically *siblings* — several top-level exchanges, none conducted inside another — which is containment's opposite and not what `parentThreadId` records.
+
+The distinction that matters for evidence is that `enactment` **MUST** be globally unique and non-reusable where `threadId` need not be ([The `threadId` Member](#the-threadid-member)). A reference naming a flow as evidence therefore names the `enactment`, under the rule of [Naming an Exchange from Outside the Framework](#naming-an-exchange-from-outside-the-framework).
+
+#### Ceremony Integrity
+
+Where a `proof` is present it covers the `ceremony` member as it covers any other ([Proof](#proof)). This is the member's placement rationale, not an incidental consequence: a signed `enactment` cannot be lifted into a different flow, and a signed `definitionDigest` cannot be reinterpreted under a definition that gives the step's name another meaning. Carried as transport metadata or as an unsigned sidecar, the member would provide neither guarantee.
+
+A *producer* **MUST NOT** set `parentEnactment` equal to the document's own `enactment`; an enactment cannot contain itself. A *producer* **SHOULD** carry the same `ceremony.enactment` onto every document of the step it names, including any *error response*.
+
+#### Membership Is a Claim, Not a Permission
+
+A `ceremony` member is an assertion by the document's *issuer* that this document belongs to the named enactment. A *consumer* can check what it holds — that a step matches the definition, that a `prev` digest resolves — but cannot verify from one document that the enactment exists as described.
+
+Accordingly:
+
+> A *consumer* **MUST NOT** grant any authority on the basis of ceremony membership alone.
+
+Every authorization decision continues to be reached under [Consumer Requirements](#consumer-requirements) item 10, exactly as for a document carrying no `ceremony` member — and note that verifying `issuer` and `proof` is not by itself such a decision. Without this rule the member would be a confused-deputy vector: "you are in the onboarding ceremony, so perform this step" is an unauthenticated assertion by whoever composed the document. The rule is also what makes [Ceremony Membership Is Optional](#ceremony-membership-is-optional) item 3 safe — because membership authorizes nothing, a *consumer* that ignores the member entirely omits nothing it was entitled to do.
+
+`ceremony` otherwise carries no normative validation semantics: a *consumer* **MUST NOT** reject a document on the basis of the member alone, and **MAY** use it for routing, correlation, aggregation, or audit.
+
+## Versioning
+
+*This section is normative.*
+
+### Version Scheme
+
+Every [[ref: Trust Task specification]] **MUST** carry a version of the form `MAJOR.MINOR`, where `MAJOR` and `MINOR` are non-negative decimal integers without leading zeros (except for the value `0` itself). Patch-level versions are not used for *Trust Task specifications*; this framework specification is itself versioned as `MAJOR.MINOR.PATCH`, per [Versioning of This Framework Specification](#versioning-of-this-framework-specification). The grammar, in [RFC 5234](https://www.rfc-editor.org/rfc/rfc5234), is:
+
+```abnf
+version    = major "." minor
+major      = "0" / nonzero *DIGIT
+minor      = "0" / nonzero *DIGIT
+nonzero    = %x31-39                 ; "1".."9"
+```
+
+#### Versioning of This Framework Specification
+
+This framework specification is itself versioned under [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html), as `MAJOR.MINOR.PATCH`. A `MAJOR` increment marks a change that is breaking for *consumers* implementing this framework or for the specification-authoring contract of [Specification Requirements](#specification-requirements); a `MINOR` increment marks a backwards-compatible addition, such as a new optional document member or a new reserved slug; a `PATCH` increment marks a correction — errata, clarified prose, a repaired example — that changes neither the wire format nor what a conforming *Trust Task specification* must declare. The grammar extends the production above:
+
+```abnf
+framework-version = major "." minor "." patch
+patch             = "0" / nonzero *DIGIT
+```
+
+The three-part form applies to **this document alone**. Every individual [[ref: Trust Task specification]] carries the two-part `MAJOR.MINOR` version defined above, and that includes the framework-defined specifications published under the reserved `trust-task-` and `trust-ceremony-` prefixes of [Type URI](#type-uri) — `trust-task-error/0.4` is a *Trust Task specification* and versions like one. Only the exact reserved slug `trust-task`, which addresses this document, carries a `PATCH` component.
+
+This framework is published in the registry at its full three-part version. Its own *Type URI* is `https://trusttasks.org/spec/trust-task/<MAJOR.MINOR.PATCH>` ([Schema Scope](#schema-scope)), and the *target framework version* a specification declares ([Specification Requirements](#specification-requirements) item 3) is that same three-part value. A `PATCH` release therefore mints a new framework *Type URI* rather than editing the representation served at an existing one — which is what [Stability](#stability) already requires of every other artifact in the registry, and what errata applied in place to a published framework version would otherwise violate.
+
+Publishing a `PATCH` obliges no specification to move. A specification targeting `0.4.0` remains conformant when `0.4.1` is published; re-targeting is an ordinary version bump of the specification itself, sequenced as in [Migrating Between Versions](#migrating-between-versions). A *consumer* **MUST** validate the outer document against the framework version its specification targets and **MUST NOT** substitute a different `PATCH`, for the reason given for *shared schema components* in [Shared Schema Components](#shared-schema-components) item 2: a pin that resolves to "whatever is latest" lets a later change alter an already-published wire contract silently.
+
+Framework releases published before this rule — `0.1` through `0.4` — denote the releases now written `0.1.0` through `0.4.0`; `0.4` and `0.4.0` are the same release, and the entries in [Appendix B](#appendix-b-changelog) are unchanged by the renumbering. Specifications already published against a two-part *target framework version* remain conformant: a *consumer* **MUST** resolve a two-part value `M.N` as `M.N.0`, and the registry **MUST** continue to serve the two-part framework URIs `https://trusttasks.org/spec/trust-task/0.1` through `/0.4` as aliases of the corresponding `.0` release, so that no already-published specification stops resolving. A specification published or re-issued from this version onward **MUST** declare the three-part form.
+
+### Compatibility Rules
+
+A change to a *Trust Task specification* **MUST** be classified as either backwards-compatible or breaking:
+
+* A **backwards-compatible** change — for example, adding an optional member, relaxing a constraint, adding a permitted enumeration value to a non-discriminating field, or clarifying prose — **MUST** result in a `MINOR` increment.
+* A **breaking** change — for example, adding or removing a required member, removing a permitted enumeration value, narrowing a constraint, or changing the semantics of an existing member — **MUST** result in a `MAJOR` increment, with `MINOR` reset to `0`.
+
+Implementations of a given *Trust Task specification* at version `M.N` **MUST** accept documents conforming to any version `M.K` where `K ≤ N`.
+
+Forward minor-version compatibility is also intended: because a `MINOR` increment is by definition backwards-compatible, an implementation at `M.N` **SHOULD** accept a document at `M.K` where `K > N`, provided it can ignore any payload members it does not recognize and the document otherwise validates against the framework schema and the `M.N` payload schema known to the implementation. A [[ref: consumer]] that elects not to support forward minor-version processing **MUST** reject such documents with an `unsupportedVersion` [[ref: error response]] (see [Standard Error Codes](#standard-error-codes)).
+
+A `MAJOR` mismatch is never forward-compatible: a *consumer* at `M.N` **MUST** reject any document whose [[ref: Type URI]] carries a `MAJOR` segment it does not implement, returning `unsupportedVersion` where the transport permits a response.
+
+*This paragraph is non-normative.* Consumers that implement forward-minor compatibility typically route documents by matching the *Type URI*'s slug and `MAJOR` segment and selecting the highest `MINOR` they implement. A consumer that routes by exact-URI equality (slug + `MAJOR.MINOR`) is conformant — strict matching is permitted by [Compatibility Rules](#compatibility-rules) — but precludes the forward-minor SHOULD; downstream implementations choosing strict matching SHOULD document the trade-off.
+
+While a *Trust Task specification* — or a *shared schema component* ([Shared Schema Components](#shared-schema-components)) — is at `draft` status ([Maturity Levels](#maturity-levels)), its schema and prose **MAY** change without notice. Accordingly, a breaking change to a `draft` artifact **MAY** be released as a `MINOR` increment rather than a `MAJOR` one. Once an artifact reaches `candidate`, `standard`, or `retired`, the classification above applies strictly: every breaking change **MUST** increment `MAJOR`.
+
+A narrower rule applies within `draft`: an **editorial or normalization change** to a `draft` artifact — re-casing an enumerated value or member name into conformance with [Naming Conventions](#naming-conventions), re-pinning a `$ref` to a newer framework or *shared schema component* version where the re-pin does not change the payload's effective wire shape, or rewording descriptions and other prose — **MUST** be made in place, errata-style, within the existing version, and **MUST NOT** mint a new version. Such a change carries no semantic difference on the wire; publishing it as a new version inflates the registry, grows the generated libraries, and forces implementations to straddle wire-identical versions for no behavioural gain. At `draft` status this in-place rule takes precedence over the version-coupling rule of [Shared Schema Components](#shared-schema-components); from `candidate` onward the classification above applies strictly — a re-cased value, in particular, is a breaking change ([Naming Conventions](#naming-conventions)). A version that was nonetheless minted for a purely editorial change **MAY** declare the optional `wireCompatibleWith` front-matter field, naming the wire-identical predecessor version, so that [[ref: consumers]] can dual-accept documents of the predecessor by mechanical normalization rather than a hand-written adapter.
+
+### Maturity Levels
+
+A *Trust Task specification* progresses through a defined lifecycle, captured by its `status` value. The lifecycle is normative: implementations and the registry use `status` to decide whether a specification can change underfoot, whether new documents **SHOULD** be issued against it, and how the bare-URL redirect in [Type URI](#type-uri) resolves. The maturity level is independent of the `MAJOR.MINOR` version number.
+
+| Status | Meaning | Schema stability ([Stability](#stability)) |
+|---|---|---|
+| `draft` | Working draft. The schema and prose **MAY** change without notice. | Not stable. |
+| `candidate` | Schema is frozen except for editorial clarifications. The specification **MUST** demonstrate two independent, interoperable implementations to enter this status. | Stable. |
+| `standard` | Stable in the long term. A `candidate` specification **MUST** complete a continuous 90-day stability window with no breaking changes before promotion to `standard`. | Stable. |
+| `retired` | Specification is no longer recommended for new use; preserved for historical reference and to keep already-issued documents verifiable. The schema and prose are frozen at the moment of retirement. | Stable. |
+
+#### Permitted Transitions
+
+A `status` value **MUST** change only along one of the transitions below:
+
+1. `draft` → `candidate` — once the entry criteria for `candidate` are met.
+2. `candidate` → `standard` — once the 90-day stability window has elapsed without breaking changes.
+3. `draft` → `retired` — abandoning a working draft.
+4. `candidate` → `retired` — deprecating a candidate before standardization.
+5. `standard` → `retired` — sunsetting a standard after a successor has been published.
+
+`retired` is **terminal**: a retired specification **MUST NOT** transition back to any earlier status. To revive functionality, the editor publishes a new `MAJOR.MINOR` of the slug starting at `draft` (see [Version Scheme](#version-scheme)).
+
+#### Behaviour at Each Status
+
+* **Producers MAY** emit documents whose `type` resolves to a `draft`, `candidate`, or `standard` specification. Producers **SHOULD NOT** emit documents against a `retired` specification.
+* **Consumers MUST** treat `draft`, `candidate`, `standard`, and `retired` specifications identically for the purpose of schema validation (the framework rules in [Consumer Requirements](#consumer-requirements) apply uniformly). Consumers **SHOULD** surface a deprecation signal — in logs, audit records, or downstream interfaces — when a received document's `type` resolves to a `retired` specification, so operators can plan migration.
+* A `retired` specification **SHOULD** declare its successor via the optional `supersededBy` front-matter field (see [Specification Requirements](#specification-requirements)).
+
+A specification's current status is recorded in its front matter and reflected in the registry at <https://trusttasks.org/>. The same lifecycle applies to this framework specification itself.
+
+The process by which a slug is assigned, by which a specification enters the registry, and by which its status is updated is governed by the registry policy maintained alongside the registry at <https://trusttasks.org/>. That policy is out of scope for this framework specification.
+
+### Migrating Between Versions
+
+*This section is informative.*
+
+When a *Trust Task specification* makes a breaking change — including adopting a new version of a *shared schema component* ([Shared Schema Components](#shared-schema-components)) — implementers are encouraged to migrate using an expand-then-contract sequence that keeps both versions interoperable throughout, so that no single deployment step requires producers and consumers to change in lockstep:
+
+1. **Author the new version.** Publish the new specification version — `M.(N+1)` for a backwards-compatible change, or `(M+1).0` for a breaking change at non-`draft` status (a breaking change at `draft` MAY use a `MINOR` increment per [Compatibility Rules](#compatibility-rules)). If the change is driven by a shared schema, publish the new shared schema component version first and re-pin the specification's `$ref` to it (see the coupling rule below). The previous specification version remains published and unchanged.
+
+2. **Update receivers first.** Deploy *consumer* support for the new version alongside the old, so a *consumer* accepts documents of both the old and the new version. Because no [[ref: producer]] is emitting the new version yet, this step is safe to roll out on its own. For a `MINOR` increment, a forward-minor-compatible consumer ([Compatibility Rules](#compatibility-rules)) may already accept the new version with no code change; for a `MAJOR` increment the consumer **must** add explicit support before any producer emits it.
+
+3. **Update senders.** Once receivers across the deployment accept the new version, deploy *producer* support so producers begin emitting the new version. Traffic shifts to the new version while consumers continue to accept any stragglers still on the old one.
+
+4. **Retire the old version.** After traffic has fully migrated and any applicable stability window has elapsed, transition the old version to `retired` ([Maturity Levels](#maturity-levels)) and declare `supersededBy` pointing at the new version. Producers stop emitting the old version; consumers may drop support for it on their own schedule.
+
+**Coupling of schema and specification versions.** A *Trust Task specification* and its payload JSON Schema are a single versioned artifact — the schema's `$id` is the specification's *Type URI* ([Schema Scope](#schema-scope)) — so any change to the payload schema is, by definition, a new specification version. A *shared schema component* ([Shared Schema Components](#shared-schema-components)) versions independently, but a specification **cannot adopt a new shared schema component version without issuing a new version of itself**: re-pinning a `$ref` changes the specification's effective wire contract. A specification **MAY** instead remain pinned to the older component version and not bump.
+
+## Namespace
+
+*This section is normative.*
+
+The framework defines a single resolvable namespace per versioned [[ref: Trust Task specification]]. One canonical URL serves human-readable prose, machine-readable schemas, and (where defined) JSON-LD contexts, differentiated by HTTP content negotiation.
+
+### Type URI
+
+Every versioned *Trust Task specification* **MUST** be addressable by a [[ref: Type URI]] — a URI in the sense of [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986) — of the form:
+
+```
+https://trusttasks.org/spec/<slug>/<MAJOR.MINOR>
+```
+
+The form above is the canonical, public-registry form. [[ref: Trust Task specifications]] intended only for private or internal use — and not published through the public registry — **MAY** use a different authority under the same URI shape; the requirements that apply to those are given in [Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications).
+
+For both forms, the path components below carry identical meaning:
+
+* The URI scheme **MUST** be `https`. Other schemes (including `http`) are non-conformant: every representation served at a *Type URI* depends on transport-layer authentication and integrity, and permitting `http` would normalize a transport-downgrade path for any [[ref: consumer]] that dereferences the URI.
+* `<slug>` is a lowercase, hyphen-separated short name assigned to the specification, optionally organized into one or more path segments (e.g. `kyc-handoff`, or `acl/grant`). The slug **MUST** match the regular expression `^[a-z][a-z0-9]*(-[a-z0-9]+)*(/[a-z][a-z0-9]*(-[a-z0-9]+)*)*$`. Each `/`-delimited segment **MUST** individually satisfy the single-segment grammar (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`); consecutive hyphens are not permitted within a segment, and consecutive slashes are not permitted between segments. Segments group related specifications under a shared namespace and are reflected in the *Type URI* path verbatim — `https://trusttasks.org/spec/acl/grant/0.1` is the *Type URI* of a specification whose slug is `acl/grant`.
+* `<MAJOR.MINOR>` is the specification version as defined in [Version Scheme](#version-scheme). The sole exception is the reserved slug `trust-task`, which addresses this framework specification and carries a three-part `<MAJOR.MINOR.PATCH>` segment instead ([Versioning of This Framework Specification](#versioning-of-this-framework-specification)); every other slug, the framework-defined ones included, carries the two-part form. When resolving a *Type URI*, a *consumer* identifies the version as the final path segment (which always matches one of the two version grammars) and the slug as the segments between `/spec/` and the version.
+
+A *Type URI* used as the value of a [[ref: Trust Task document]]'s `type` member **MAY** additionally carry the fragment `#request` or `#response`, with the meanings defined in [Request and Response Variants](#request-and-response-variants). The fragments `#request` and `#response` are **RESERVED**; no other fragment values are defined by this framework, and individual *Trust Task specifications* **MUST NOT** define their own.
+
+The following slugs are **RESERVED** for framework-defined specifications and **MUST NOT** be used by any individual *Trust Task specification*:
+
+* The exact slug `trust-task`, reserved for this framework specification itself. It is the one slug whose version segment is three-part.
+* Any slug whose first segment is `trust-task` or `trust-ceremony`, or begins with the prefix `trust-task-` or `trust-ceremony-`, reserved for framework-defined specifications. Equivalently, the slug **MUST NOT** match the pattern `^trust-(task|ceremony)($|-|/)`. The `trust-ceremony` half of the reservation is unused at this version and exists so that the ceremony layer of [The `ceremony` Member](#the-ceremony-member) has a namespace to publish into that no other party can claim first. The slugs currently published by the framework under this reservation are:
+
+  | Slug                     | Purpose                                                                 |
+  |--------------------------|-------------------------------------------------------------------------|
+  | `trust-task-error`       | Error-response payload — see [The trust-task-error Specification](#the-trust-task-error-specification). |
+  | `trust-task-ok`          | Courtesy acknowledgement of a task that defines no success response — see [Reserved Response-Type Slugs](#reserved-response-type-slugs). |
+  | `trust-task-next-step`   | Recipient-suggested continuation — see [Reserved Response-Type Slugs](#reserved-response-type-slugs). |
+  | `trust-task-discovery`   | Discovery and capability negotiation — see [Discovery and Capability Negotiation](#discovery-and-capability-negotiation). |
+  | `trust-task-control`     | Cancellation, suspension, and resumption of an accepted task — see [Task Control](#task-control). |
+  | `trust-ceremony-receipt` | Evidence that one [[ref: enactment]] of a [[ref: Trust Ceremony]] completed — see [The `ceremony` Member](#the-ceremony-member). |
+
+The *Type URI* is the single canonical, resolvable reference to a versioned *Trust Task specification*. It serves both humans (rendered prose) and machines (validation schema, optional JSON-LD context) under content negotiation as defined in [Content Negotiation](#content-negotiation).
+
+The framework also reserves a parallel `/binding/` subtree under the same authority for [[ref: transport binding]] identifiers and binding-internal resources (envelope `type` values, binding schema URIs, status mappings). The `/binding/` subtree is **structurally disjoint** from `/spec/`: no URI under `/binding/` is a *Type URI*, and a *Trust Task document* whose `type` is rooted at `/binding/...` is malformed. The grammar and rules for the `/binding/` subtree are defined in [Binding Namespace](#binding-namespace).
+
+A third subtree, `/ceremony/`, is reserved for [[ref: ceremony definitions]] on the same terms. It is likewise **structurally disjoint** from both: no URI under `/ceremony/` is a *Type URI*, and a *Trust Task document* whose `type` is rooted at `/ceremony/...` is malformed. The grammar and rules for the `/ceremony/` subtree are defined in [Ceremony Namespace](#ceremony-namespace).
+
+A *Type URI* with the version segment omitted (i.e. `https://trusttasks.org/spec/<slug>`) **SHOULD** redirect to the latest `standard` version of the specification, or — if no `standard` version exists — to the latest `candidate`, or — failing that — to the latest `draft`. `retired` versions **MUST NOT** be selected by the bare-URL redirect, since `retired` signals "no longer recommended for new use"; if every version of a slug is `retired`, the bare URL **SHOULD** return `410 Gone` with a body that links to the latest retired version and its declared `supersededBy` successor, if any.
+
+### Content Negotiation
+
+A server hosting a *Type URI* **MUST** support HTTP content negotiation [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110) and **MUST** be capable of returning the representations listed below. The server **MUST** return the representation matching the highest-priority acceptable media type in the request's `Accept` header. If the `Accept` header is absent or names no representation listed below, the server **MUST** return the `text/html` representation.
+
+| Media type | Representation |
+|---|---|
+| `text/html` | The rendered specification document for human readers. |
+| `application/schema+json` | The normative JSON Schema [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/schema) for this specification (see [Schema Scope](#schema-scope) for what the schema covers). |
+| `application/ld+json` | The JSON-LD context for this specification, when one is defined. If no context is published for this *Type URI*, the server **MUST** respond with HTTP `406 Not Acceptable`. |
+
+Every representation returned **MUST** describe the same version of the specification as is encoded in the requested *Type URI*.
+
+### Schema Scope
+
+The JSON Schema served at the *Type URI* of an individual *Trust Task specification* describes **only** the contents of that specification's `payload` member.
+
+The outer document structure (`id`, `threadId`, `parentThreadId`, `type`, `issuer`, `recipient`, `issuedAt`, `expiresAt`, `payload`, `@context`, `proof`) is described by the JSON Schema served at the framework's own *Type URI* — `https://trusttasks.org/spec/trust-task/<MAJOR.MINOR.PATCH>`, three-part per [Versioning of This Framework Specification](#versioning-of-this-framework-specification) — under content negotiation for `application/schema+json`. A complete document validation therefore composes the framework schema (outer structure) with the task-specific payload schema.
+
+The JSON Schema served at any *Type URI* **MUST** declare:
+
+* `$id` equal to that *Type URI*.
+* `$schema` set to `https://json-schema.org/draft/2020-12/schema`.
+
+It **MUST** specify `additionalProperties` either explicitly as `false` or with an accompanying prose statement of how unrecognized members are to be treated.
+
+### Stability
+
+For any value of `<slug>` and any value of the version segment, the representations served at the corresponding *Type URI* **MUST NOT** change in a way that alters their normative content once the specification has reached the `candidate`, `standard`, or `retired` status. This applies to the framework's own *Type URI* on the same terms, which is why a framework `PATCH` release is published at a new URI rather than applied in place. Once a specification is `retired`, the schema and prose are frozen at the moment of retirement; the only permitted change is correcting the `status` value itself (which is itself terminal — see [Maturity Levels](#maturity-levels)) or adding the `supersededBy` declaration.
+
+This commitment is made by the public registry for *Trust Task specifications* it hosts; private specifications published under their own authority (see [Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications)) **SHOULD** offer their consumers an equivalent commitment, scoped to their own trust boundary.
+
+### Private and Unpublished Trust Task Specifications
+
+Not every *Trust Task specification* is intended for the public registry. A [[ref: producer]] and *consumer* operating within a single organization, deployment, or trust boundary **MAY** define their own *Trust Task specifications* solely for internal use — never publishing them under `https://trusttasks.org/` — and still conform fully to this framework.
+
+The following rules apply to *Trust Task specifications* that are not published through the public registry:
+
+1. **Authority.** A private specification's *Type URI* **MUST NOT** be served from, or claim to identify a resource at, the `https://trusttasks.org/` domain. That domain is reserved for *Trust Task specifications* published through the public registry process. A private specification **SHOULD** use an HTTPS authority the publisher controls — typically a project or organization domain — so the URI uniquely identifies the specification within the publisher's trust boundary. Examples:
+   ```
+   https://example.com/trust-tasks/<slug>/<MAJOR.MINOR>
+   https://internal.example/spec/<slug>/<MAJOR.MINOR>
+   ```
+   The slug grammar, version grammar, fragment conventions, and path-component meanings defined in [Type URI](#type-uri) apply unchanged.
+
+2. **Reservation rule.** The slug reservation rule in [Type URI](#type-uri) — that the slug **MUST NOT** be `trust-task` or have a first segment matching `^trust-task(-|/)?` — applies regardless of authority. A private specification **MUST NOT** use those reserved slugs even on its own domain, so that documents flowing between trust boundaries cannot be confused with framework-defined response types.
+
+3. **Framework conformance is unchanged.** All other framework requirements — the document structure ([Trust Task Documents](#trust-task-documents)), versioning rules ([Versioning](#versioning)), conformance behaviour ([Minimum Requirements](#minimum-requirements)), and error response shape ([Error Responses](#error-responses)) — apply identically to private *Trust Task specifications*. Implementations consuming both private and registry-published specifications **SHOULD** use the same validation and signing pipeline for both.
+
+4. **Resolvability.** A private *Type URI* **SHOULD** resolve to the specification's representations under content negotiation ([Content Negotiation](#content-negotiation)) for parties within the publisher's trust boundary, but **MAY** be unresolvable from the public internet. A *consumer* unable to dereference a private *Type URI* relies on out-of-band distribution of the specification document and schema.
+
+5. **Promotion to the registry (informative).** A private *Trust Task specification* **MAY** later be submitted for inclusion in the public registry. The submission process is governed by the registry policy referenced in [Maturity Levels](#maturity-levels); a re-host typically involves a slug check, transfer of the JSON Schema document, and publication under `https://trusttasks.org/spec/<slug>/<MAJOR.MINOR>`. The original private *Type URI* and the new public *Type URI* identify distinct specifications unless and until the registry policy explicitly aliases them.
+
+Private *Trust Task specifications* are full *Trust Task specifications* for the purposes of conformance: a producer or consumer that satisfies [Minimum Requirements](#minimum-requirements) against a private spec is a *conforming producer* or *conforming consumer* of that spec, exactly as it would be for a registry-published one.
+
+### Shared Schema Components
+
+A *Trust Task specification*'s payload JSON Schema **MAY** reference reusable schema fragments — *shared schema components* — that several specifications have in common (for example, an access-control entry, a device binding, a sealed-envelope shape, or a synchronization event). Shared schema components are an authoring convenience and a consistency mechanism. They are **not** independently published [[ref: Type URIs]]: a *Trust Task document*'s `type` **MUST NOT** resolve to a shared schema component, and a shared schema component is never the unit a document conforms to — only a specification is.
+
+A shared schema component is nonetheless a *versioned artifact* in its own right, governed by the following rules.
+
+1. **Versioning.** A shared schema component carries a `MAJOR.MINOR` version and follows the same compatibility rules as a specification ([Compatibility Rules](#compatibility-rules)), including the `draft` caveat. A breaking change to a shared schema component — re-casing an enumerated value, removing or renaming a `$def`, narrowing a constraint — **MUST** be published as a new version of that component. The prior version remains in place for the specifications still pinned to it.
+
+2. **Pinning.** A consuming specification **MUST** reference a shared schema component at a specific version. Resolving a reference to "the latest" version of a component is non-conformant, because a later change to the component would otherwise alter an already-published specification's wire contract silently.
+
+3. **Coupling to specification versions.** Because a consuming specification pins a specific component version, adopting a new component version requires the consuming specification to publish a new version of itself (see [Migrating Between Versions](#migrating-between-versions)). A component version bump therefore never changes an already-published specification underfoot; the new component values become observable only through a new specification version that re-pins to them.
+
+4. **Lifecycle and discovery.** A shared schema component **SHOULD** declare its own `status` ([Maturity Levels](#maturity-levels)) and **MAY** declare `supersededBy` when retired. The registry **SHOULD** surface shared schema components and their versions alongside specifications, so that implementers can see which specification versions depend on which component versions.
+
+### Ceremony Namespace
+
+A [[ref: ceremony definition]] — the published description of a flow composed of several [[ref: Trust Tasks]], referenced by the `ceremony.definition` member of [The `ceremony` Member](#the-ceremony-member) — is identified by a URI in the `/ceremony/` subtree of the framework's authority:
+
+```
+https://trusttasks.org/ceremony/<slug>/<MAJOR.MINOR>
+```
+
+`<slug>` follows the same lowercase, hyphenated grammar as a Trust Task slug ([Type URI](#type-uri)) and is subject to the same `^trust-(task|ceremony)($|-|/)` reservation; `<MAJOR.MINOR>` follows the version grammar of [Version Scheme](#version-scheme).
+
+The `/ceremony/` subtree is **structurally disjoint** from `/spec/` and `/binding/`. A *ceremony definition* is not a *Trust Task specification*: no document's `type` resolves to one, and a *consumer* that receives a *Trust Task document* whose `type` is rooted at `/ceremony/...` **MUST** reject it with `malformedRequest` ([Standard Error Codes](#standard-error-codes)). The Type URI grammar of [Type URI](#type-uri) already excludes the path; the rule is stated explicitly so the namespace boundary is visible at a glance and so such documents have a defined disposition rather than relying on grammar mismatch.
+
+A *ceremony definition* is referenced by content as well as by name: a step carrying `ceremony.definition` **MUST** also carry `ceremony.definitionDigest` ([The `ceremony` Member](#the-ceremony-member)). A URI alone would leave the flow's rules mutable by whoever controls the URI, retroactively and for every enactment already performed.
+
+This version of the framework defines the namespace, the reservation, and the reference mechanism. The **content** of a ceremony definition — its role, step, ordering and completion vocabulary — is out of scope for this revision and is expected to be specified in a future one. A *consumer* encountering a `ceremony.definition` it cannot resolve or does not understand **MAY** process the document as though the member were absent; by [Membership Is a Claim, Not a Permission](#membership-is-a-claim-not-a-permission) it forgoes no authority in doing so.
+
+The reservation rule of [Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications) applies equivalently: a private ceremony definition **MUST** use an authority its publisher controls and **MUST NOT** claim to identify a resource at `https://trusttasks.org/ceremony/...`.
+
+## Minimum Requirements
+
+*This section is normative.*
+
+### Producer Requirements
+
+A *conforming producer* **MUST**:
+
+1. Emit a [[ref: Trust Task document]] whose top-level structure satisfies [Top-Level Members](#top-level-members).
+2. Set the `type` member to the [[ref: Type URI]] of the [[ref: Trust Task specification]] being implemented, including its `<MAJOR.MINOR>` segment.
+3. Place all task-specific data in `payload`, and emit a `payload` value that validates against the JSON Schema obtained by content-negotiating the *Type URI* for `application/schema+json` (see [Content Negotiation](#content-negotiation)).
+4. Populate `id` with a value satisfying [The `id` Member](#the-id-member).
+
+A *conforming producer* **SHOULD** populate `issuedAt` to support freshness checks downstream, **SHOULD** populate `issuer` and `recipient` when the transport in use does not provide authenticated party identity end-to-end between [[ref: producer]] and [[ref: consumer]], **SHOULD** set `threadId` when emitting a *Trust Task document* in response to another (see [The `threadId` Member](#the-threadid-member)), **SHOULD** set `parentThreadId` when the exchange is conducted inside another and carry it onto every document of the inner exchange (see [The `parentThreadId` Member](#the-parentthreadid-member)), **SHOULD** set `ceremony` when the document is a step of a [[ref: Trust Ceremony]] and carry the same `enactment` onto every document of that step including any [[ref: error response]] (see [The `ceremony` Member](#the-ceremony-member)), and **SHOULD** preserve any unrecognized members received from upstream parties when forwarding a *Trust Task document*.
+
+A *conforming producer* that emits an `ext` member (see [The `ext` Extension Member](#the-ext-extension-member)) **MUST** namespace every immediate child key of `ext` under a reverse-DNS prefix the producer controls; bare or un-namespaced child keys are non-conforming.
+
+### Consumer Requirements
+
+A *conforming consumer* **MUST**:
+
+1. Validate the outer document structure against the framework JSON Schema. The applicable framework version is the *target framework version* declared by the *Trust Task specification* identified by the document's `type` member (see [Specification Requirements](#specification-requirements)). The framework schema for that version is obtained by content-negotiating `https://trusttasks.org/spec/trust-task/<MAJOR.MINOR.PATCH>` for `application/schema+json`, where `<MAJOR.MINOR.PATCH>` is the declared target framework version — **not** the `<MAJOR.MINOR>` of the document's `type` member, which identifies the task specification version, is two-part, and may differ.
+2. Validate the document's `payload` member against the JSON Schema obtained by content-negotiating the document's `type` member for `application/schema+json`.
+3. Reject any document whose `type` it does not recognize, unless the consumer's policy explicitly permits forward-compatible processing under [Compatibility Rules](#compatibility-rules).
+4. Honor the document's expiry where present: if `expiresAt` is set and `now ≥ expiresAt` relative to the *consumer*'s clock (with the optional skew tolerance permitted in [Top-Level Members](#top-level-members)), treat the document as expired and not act upon it. This is an **acceptance** bound: it governs whether the *consumer* may begin, and does not by itself require it to abandon execution already under way (see item 12).
+5. Reject any document whose `recipient` member is set and does not identify the *consumer*'s own party. Where the *Trust Task specification* declares `recipient` as **REQUIRED** (see [Specification Requirements](#specification-requirements) item 5), reject any document lacking an in-band `recipient` with `malformedRequest`.
+6. Reject any document for which an in-band `issuer` or `recipient` member is inconsistent with an authenticated identity derived from the transport for the same party.
+7. If the document carries a `proof` member, verify it per [Proof](#proof) against the in-band `issuer` and reject the document with `proofInvalid` on verification failure. Independently, if the *Trust Task specification* identified by `type` declares `proof` as **REQUIRED** (see [Specification Requirements](#specification-requirements) item 8) and no `proof` is present, reject the document with `proofRequired`.
+8. If the document carries a `proof` member and no in-band `recipient`, and the *Trust Task specification* identified by `type` is **not** a *bearer specification* ([Bearer Specifications](#bearer-specifications)), reject the document with `malformedRequest`. This enforces the [Audience Binding](#audience-binding) rule.
+9. Not grant any authority on the basis of a `ceremony` member. Membership of an [[ref: enactment]] is an assertion by the document's *issuer*, not a verified fact, and every authorization decision **MUST** be reached under item 10 below exactly as for a document carrying no such member. See [Membership Is a Claim, Not a Permission](#membership-is-a-claim-not-a-permission). A *consumer* that does not implement ceremonies applies the unrecognized-member rule below and forgoes nothing by doing so.
+10. Not treat identity or document-proof validation as authorization. Successful validation of a [[ref: VID]], `issuer`, `recipient`, transport-derived identity, or `proof` establishes **who** made the assertion and that the document reached the *consumer* unaltered. It **MUST NOT**, by itself, be treated as establishing that the *producer* is authorized to request the outcome the [[ref: Trust Task]] describes, or that the *consumer* is authorized to perform it. Before executing a *Trust Task*, a *consumer* **MUST** evaluate whatever authorization requirements apply under the *Trust Task specification* identified by the document's `type`, the *consumer*'s own policy, and the trust or governance framework it operates under.
+11. Not execute a [[ref: consequential Trust Task]] ([Terminology](#terminology)) twice on account of the same *Trust Task document*. Once a *consumer* has accepted a document with a given `id` for execution, receipt of that same document again **MUST NOT** cause the consequential effect to occur a second time, unless the *Trust Task specification* identified by the document's `type` explicitly declares repeated execution safe and intended. A *consumer* receiving a document whose `id` matches one it has already accepted but whose content differs **MUST** reject the later document with `idConflict` ([Standard Error Codes](#standard-error-codes)) and **MUST NOT** treat it as a retry of the original. Transport request identifiers, transport message identifiers, and execution handles **MUST NOT** substitute for the *Trust Task document*'s `id` as the key for this rule.
+12. Re-evaluate, immediately before each irreversible or externally visible effect of a *consequential Trust Task* ([Terminology](#terminology)), every condition that the *Trust Task specification* and the *consumer*'s own policy require for that effect. Successful validation establishes that a document was eligible for processing **when it was validated**; it does not establish that the work remains executable indefinitely, and for execution that is delayed, long-running, or resumed the two instants can be far apart. Where a required condition — an authorization, delegation, mandate, capability, membership, standing, credential or key status, subject relationship, or a deadline the *Trust Task specification* defines for itself — is no longer satisfied at that point, the *consumer* **MUST NOT** perform the subsequent effect. A valid, authorized control operation the *consumer* has received under [Task Control](#task-control) is such a condition.
+
+For each of the rules in this section that references the `issuer` or `recipient` party, the in-band member value is authoritative when present and the transport-derived identity is a cross-check; when the in-band member is absent the *consumer* **MAY** derive the value from the transport. This precedence is defined normatively in [Precedence of In-Band over Transport-Derived Identity](#precedence-of-in-band-over-transport-derived-identity).
+
+The evaluation required by item 10 **MAY** consider delegation, mandate, capability, membership, standing, credential status, subject relationship, purpose limitation, or any other evidence the *consumer* requires; this framework does not prescribe an authorization model and does not constrain which of these a *consumer* consults. A verified assertion **MAY** itself constitute authorization evidence, but only where the *Trust Task specification* explicitly defines that role for it ([Specification Requirements](#specification-requirements) item 15) **and** the *consumer*'s policy accepts it for that purpose — a signed decision whose proof *is* the authorization is a design a specification may adopt deliberately, not a default a *consumer* may infer. Where authorization fails after the document has otherwise validated, the *consumer* **SHOULD** return an *error response* of `permissionDenied` ([Standard Error Codes](#standard-error-codes)) where one can be returned safely, subject to the message-content rule of [Error-Response Identity Leakage](#error-response-identity-leakage).
+
+**Keying and comparison for item 11.** The duplicate-execution key is the *Trust Task document*'s `id` alone, which [[ref: producers]] are required to mint globally unique and never to reuse ([The `id` Member](#the-id-member)). Two documents bearing the same `id` are *the same document* for the purposes of item 11 when their serializations are identical under [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) canonicalization — the same identity [Retry Semantics](#retry-semantics) defines for a retry. Any other difference, including a changed `payload`, a changed `recipient`, or a re-signed `proof` over identical content, makes them different documents sharing an `id`, which is the `idConflict` case. A *consumer* implementing item 11 therefore retains a digest of what it accepted, not merely the `id`: an `id` alone cannot distinguish the retry it must absorb from the conflict it must reject.
+
+**Bounding the record.** A *consumer* cannot apply item 11 to a document it can no longer recognize, so it **MUST** retain the record for at least as long as it remains willing to execute that document. The two bounds are the same bound. Where `expiresAt` is present it fixes both: after it, the document is refused under item 4 and the record may be dropped. Where `expiresAt` is absent, the *consumer*'s own acceptance window — typically a freshness bound over `issuedAt` — fixes both, and a *consumer* **MUST NOT** accept for execution a document older than the window over which it retains records. Retention beyond that point is not required: a document the *consumer* would now refuse as stale cannot be replayed into a second execution. A *consumer* that can establish neither an `expiresAt` nor an age for a document has no window in which to place it, and **MUST NOT** execute a *consequential Trust Task* on it.
+
+**What item 12 does and does not re-check.** The rule is about **authority**, not about the clock. `expiresAt` is deliberately absent from its list: that member bounds acceptance ([Top-Level Members](#top-level-members)), and re-checking it mid-execution would convert a statement about a request's staleness into an execution timeout the *producer* never set and could not have calculated — it does not know how long the *consumer*'s work takes. A *consumer* **MUST NOT** abandon execution solely because `expiresAt` has passed since it began.
+
+A *Trust Task* that genuinely has a completion deadline — an offer that lapses, a quote that cannot be honored after a stated instant — expresses it in its own `payload`, where the *Trust Task specification* can define what lapsing *means* for that task. Such a deadline is then one of the conditions item 12 re-evaluates, on the same footing as a revoked delegation, with no framework member required. `task-consent/request/0.1` is the worked example: its `payload.expiresAt` states that the pending request lapses and no decision is accepted for it — a meaning the envelope member could not carry, because the envelope does not know what a decision is.
+
+**Stopping is not always safer than finishing.** Item 12 is placed *before* each irreversible effect for a reason: once such an effect has occurred it cannot be undone by declining the next one, and for many [[ref: consequential Trust Tasks]] abandoning a partially applied change leaves the [[ref: recipient party]] in a state neither party asked for. A *consumer* **MUST NOT** treat abandonment as inherently the safe option; where a *Trust Task specification* defines a sequence whose partial application is unsafe, the specification says so and the *consumer* follows it.
+
+Where execution has already produced partial or irreversible effects and the *consumer* stops, it **SHOULD** return a response or status that distinguishes **partial execution** from a task that was never begun. The two are different facts about the world, and a *producer* that cannot tell them apart cannot decide whether to reissue. Where the *Trust Task specification* defines no success-response document, this disposition is reported as an *error response* ([Error Responses](#error-responses)) rather than left silent — the silence of item 11 signifies a duplicate absorbed, and must not be reused to signify work half-done.
+
+**Disposition of a duplicate.** Where the original execution is still in progress, the *consumer* **SHOULD** return or expose the existing execution state rather than begin another. Where execution has completed and the *Trust Task specification* defines a success-response document ([Specification Requirements](#specification-requirements) item 7.6), the *consumer* **SHOULD** return the previously determined result, or an equivalent receipt where that specification permits one. Where the specification defines **no** success-response document — the fire-and-forget case of that same item — there is nothing to return: the *consumer* declines to execute again and that silence is the correct disposition, not an error. In no case is a duplicate reported as `taskFailed`; the task did not fail, it already happened.
+
+**Relationship to idempotency.** Idempotency as a property of the underlying operation remains task-specific and outside this framework. Item 11 requires only that transport retry or replay not invoke a consequential operation a second time. A *Trust Task specification* whose operation is naturally idempotent — where executing twice is indistinguishable from executing once, in every effect the *recipient party* exposes — **MAY** declare repeated execution safe and intended, which disapplies item 11 for that specification. Such a declaration is about the operation, not about the *consumer*'s convenience, and a specification **MUST NOT** make it merely to avoid implementing the rule.
+
+*This paragraph is non-normative.* Item 10 generalizes a principle the framework already applies in two narrower places: [Membership Is a Claim, Not a Permission](#membership-is-a-claim-not-a-permission) and item 9, where ceremony membership authorizes nothing, and [Specification Requirements](#specification-requirements) items 13 and 14, where the side-effect and exposure classes describe a task without authorizing it. Those are instances of the general rule rather than exceptions to it. The inference the rule forecloses — *valid `proof` + recognized `issuer` + correct `recipient` = authorized instruction* — is the confused-deputy vector of [Membership Is a Claim, Not a Permission](#membership-is-a-claim-not-a-permission) reached by a different route, and it is most dangerous where the *producer* is an autonomous agent: such a *producer* can typically prove its own identity perfectly while holding no authority to act for a subject, exercise a delegated capability, disclose information, or cause a *consequential* effect ([Terminology](#terminology)).
+
+A *conforming consumer* **SHOULD** preserve, but **MUST NOT** act upon, members it does not recognize. A *consumer* that does not implement JSON-LD processing **MUST** ignore the `@context` member.
+
+For documents that carry an `ext` member (see [The `ext` Extension Member](#the-ext-extension-member)), a *conforming consumer* **MUST** ignore every `ext` immediate-key namespace it does not recognize — the unrecognized-namespace rule is the same "preserve but MUST NOT act upon" rule as for unrecognized top-level members, applied at the `ext` level. A *consumer* **MAY** require one or more specific namespaces under `ext` as a matter of local policy and **MUST** reject a document missing a required namespace with `malformedRequest`; [[ref: consumers]] applying such a policy **SHOULD** publish the requirement via discovery ([Discovery and Capability Negotiation](#discovery-and-capability-negotiation)) so *producers* can satisfy it before the wire trip.
+
+When a *consumer* rejects a *Trust Task document* under any rule in this section, and the transport in use supports a response from *consumer* to *producer*, the *consumer* **SHOULD** return an *error response* conforming to [Error Responses](#error-responses).
+
+### Specification Requirements
+
+A *conforming Trust Task specification* **MUST** declare each of the following. Together these declarations make the specification self-describing to both human readers and machine consumers, and constitute the minimum needed to author or interpret a *Trust Task document*.
+
+1. **Slug** — the lowercase slug used in the specification's *Type URI*, satisfying the grammar and reservation rules of [Type URI](#type-uri).
+2. **Version** — the `MAJOR.MINOR` version of this specification, satisfying [Version Scheme](#version-scheme).
+3. **Target framework version** — the `MAJOR.MINOR.PATCH` version of this framework specification that the *Trust Task specification* targets, three-part per [Versioning of This Framework Specification](#versioning-of-this-framework-specification). A value declared before that rule took effect is two-part and resolves as `M.N.0`. A *consumer* uses this declared value to select the framework schema under which the outer document is validated (see [Consumer Requirements](#consumer-requirements), item 1).
+4. **Maturity level** — one of `draft`, `candidate`, `standard`, or `retired`, satisfying [Maturity Levels](#maturity-levels). A specification whose status is `retired` **SHOULD** also declare a `supersededBy` value (item 11) pointing at the successor.
+5. **Parties** — the role of each [[ref: party]] expected in a document conforming to this specification, the *VID* schemes accepted for each, and whether each of the `issuer` and `recipient` members is **REQUIRED**, **RECOMMENDED**, or **OPTIONAL** in a document. The defaults from [The `issuer` and `recipient` Members](#the-issuer-and-recipient-members) apply if the specification is silent, but explicit declaration is **RECOMMENDED**. A **REQUIRED** declaration is enforceable: a *consumer* **MUST** reject documents lacking an in-band member declared **REQUIRED** with `malformedRequest` (see [Consumer Requirements](#consumer-requirements) item 5). **RECOMMENDED** and **OPTIONAL** declarations are advisory and impose no rejection obligation. A specification identifies which party fills each framework member by tagging that party `issuer` or `recipient`; a party named only in the [[ref: payload]] — neither the document's `issuer` nor its `recipient` — carries no such tag. The requirement of the party tagged `recipient` governs the `recipient` member of a request document; because a response document swaps the parties ([Request and Response Variants](#request-and-response-variants)), the requirement of the party tagged `issuer` governs the `recipient` member of a response.
+6. **Outcome** — a non-normative prose statement of what successful execution of the task achieves between the parties. This is the human-readable counterpart to the payload schema.
+7. **Payload JSON Schema** — a normative JSON Schema for the `payload` member that:
+   1. Is a valid JSON Schema document under [JSON Schema 2020-12](https://json-schema.org/draft/2020-12/schema).
+   2. Sets `$id` to the specification's *Type URI* (without fragment).
+   3. Sets `$schema` to `https://json-schema.org/draft/2020-12/schema`.
+   4. States how unrecognized payload members are treated — by specifying `additionalProperties` explicitly as `false`, by specifying `unevaluatedProperties` as `false`, or with an accompanying prose statement. A schema assembled by `allOf` over a *shared schema component* ([Shared Schema Components](#shared-schema-components)) **MUST** use `unevaluatedProperties`: `additionalProperties` is evaluated by each subschema against the whole instance and cannot see members a sibling subschema matched, so it rejects the composing schema's own members. For the same reason a shared component intended for composition **SHOULD** leave itself open and let the consuming schema close the result.
+   5. Is served at its *Type URI* under content negotiation for `application/schema+json`.
+   6. Where the specification defines a success-response document (per [Request and Response Variants](#request-and-response-variants)), the schema **MUST** contain a sub-schema reachable via `$anchor: "response"` describing the response document's `payload`; the top-level schema (or the sub-schema reachable via `$anchor: "request"`) describes the request document's `payload`. A *consumer* receiving a document whose `type` carries `#response` resolves the response sub-schema by dereferencing the bare *Type URI* and following the `response` anchor. Where the specification defines no success-response document, the schema **MUST NOT** declare a `response` anchor; such tasks are fire-and-forget at the application layer (failures are still reported via `trust-task-error` per [Error Responses](#error-responses)).
+8. **Proof requirement** — an explicit statement of whether the `proof` member is **OPTIONAL**, **RECOMMENDED**, or **REQUIRED**, together with a brief rationale referencing the threat model addressed (for example, tampering by intermediaries, replay, repudiation by the *producer*, or reliance by third parties beyond the original *consumer*). The declared requirement **MUST NOT** be weaker than the default applicable under [When to Include a Proof](#when-to-include-a-proof).
+
+    The statement takes one of two forms. A specification **MAY** declare a **single** requirement applying to every document variant, or it **MAY** declare **per-variant** requirements for the *request* and the *response* separately. The per-variant form exists because the two are relied upon differently: a response retained as evidence by a party outside the original exchange can require a proof where the request that triggered it does not, and the reverse is equally common — a request that destroys state needs to be attributable while the acknowledgement it returns protects nothing. A single value forces the stricter of the two onto both, overstating the requirement on whichever variant needs it less. Where a specification declares no requirement for the *response*, the *request*'s applies to it, so an omission can never weaken a variant.
+
+    A *consumer* applies the requirement declared for the variant it is processing, identified by the document's `type` fragment ([Request and Response Variants](#request-and-response-variants)); the rejection rule is unchanged ([Consumer Requirements](#consumer-requirements) item 7).
+
+    The **error** variant is deliberately **not** declarable here. An *error response*'s `type` resolves to the framework's `trust-task-error` specification ([The trust-task-error Specification](#the-trust-task-error-specification)), which is a different *Trust Task specification* from the one being declared, and [Consumer Requirements](#consumer-requirements) item 7 resolves the proof requirement from the specification the document's `type` names. A declaration made here could not reach it.
+9. **Task-specific error codes (where used)** — for each extended `code` defined under [Extension by Individual Trust Task Specifications](#extension-by-individual-trust-task-specifications), the code identifier, its meaning, its default `retryable` value, and the JSON Schema fragment describing any `details` object it carries. Where no extensions are defined, the specification **SHOULD** state so explicitly.
+10. **JSON-LD context (where used)** — if the specification publishes a canonical JSON-LD context, the context **MUST** be served at the specification's *Type URI* under content negotiation for `application/ld+json` (see [JSON-LD Compatibility](#json-ld-compatibility) and [Content Negotiation](#content-negotiation)). Where no context is published, the specification **SHOULD** state so explicitly.
+11. **Successor (`supersededBy`, retired specifications only)** — a `retired` specification **SHOULD** declare its successor as a string of the form `<slug>` or `<slug>/<MAJOR.MINOR>`. The bare-slug form points to "the latest non-retired version of that slug"; the explicit form pins to a specific version. The value is used by the registry's bare-URL redirect (see [Type URI](#type-uri)) and by consumer-side deprecation tooling to direct implementers at the recommended replacement. Specifications whose status is not `retired` **MUST NOT** declare `supersededBy`.
+12. **Bearer flag (where applicable)** — a *Trust Task specification* that opts out of the [Audience Binding](#audience-binding) rule **MUST** declare `bearer: true` in its front matter. The default is non-bearer; specifications omit the field or set `bearer: false` when audience binding applies. A *bearer specification* **MUST** also declare `recipient` as **OPTIONAL** under item 5 and **MUST** include the audience-free rationale required by [Bearer Specifications](#bearer-specifications).
+13. **Side-effect class** — an explicit classification of the effect that successful execution has on the *recipient party*, declared in front matter as a `sideEffects` object carrying a `level` — one of `none`, `mutating`, or `destructive` — and a brief `rationale`. `none` denotes a read-only or idempotent task that persists no state change (a query, an enumeration, a discovery probe); `mutating` denotes creation or alteration of recoverable state; `destructive` denotes an irreversible or authority-shifting effect (deactivation, rotation of a sole controlling key, deletion, transfer of ownership). For a `destructive` classification the rationale **MUST** name the irreversible or authority-shifting effect. This classification is the structured, machine-actionable counterpart to the prose Outcome of item 6.
+
+    The classification is **descriptive**: it states what the task *does*, not whether approval is required to do it. A *consumer* that gates execution on human approval — for example an agent executing a task delegated to it by a *producer* — MAY derive its approval policy from this class, but that policy is the *consumer*'s alone. Accordingly: a *Trust Task specification* **MUST NOT** declare, in any form, that a task does or does not require consent, human approval, or an authentication step-up; such policy **MUST NOT** be delegable to a specification or to the registry that serves it. A *consumer* that enforces an approval policy **MUST** determine the authoritative side-effect class from the handler it is about to invoke rather than from the declared value alone, and **MUST** treat an absent, unrecognized, or unresolvable declaration as no weaker than `mutating`. The declared class exists to inform and to render, not to authorize.
+14. **Exposure class** — a declaration, orthogonal to the side-effect class of item 13, of what successful execution causes to *leave* the recipient or to be *exercised* on the subject's behalf, independent of any change to recipient state. Declared in front matter as an `exposure` object carrying a `discloses` value — one of `none`, `metadata`, or `secret` — and an `actsAsSubject` boolean. `discloses` states the sensitivity of data the task returns to the caller: `none` (an acknowledgement or a determination only), `metadata` (non-secret descriptive data about a subject or resource, such as an enumeration or a status read), or `secret` (confidential material the caller retains, such as released credential material or a usable session blob). `actsAsSubject` is `true` when execution exercises the subject's own authority to produce an attributable effect in the subject's name — a login performed on their behalf, a signature bearing their identity, a credential issued under their authority — even when no data is disclosed and no recipient state changes. Where `discloses` is not `none` or `actsAsSubject` is `true`, a `rationale` naming the disclosed material or the exercised authority is **REQUIRED**.
+
+    The side-effect class (item 13) and the exposure class are **orthogonal**: the former measures the *integrity* effect on recipient state, the latter the *confidentiality and agency* effect of data egress and delegated action. A read-only task (`sideEffects.level: none`) may still disclose a secret; a signing task may change no recipient state yet act with the subject's full authority. Both are governed by the same discipline as item 13: the exposure class is **descriptive, not prescriptive** — a specification **MUST NOT** derive from it a consent requirement — and a *consumer* that gates on it **MUST** determine the authoritative values from the handler it is about to invoke, and **MUST** treat an absent or unresolvable declaration as no less exposed than `discloses: secret` with `actsAsSubject: true`.
+
+15. **Authorization evidence (consequential tasks)** — a *Trust Task specification* defining a *consequential Trust Task* ([Terminology](#terminology)) **MUST** describe any class of authorization evidence a *consumer* needs in order to interpret the task correctly — for example the delegation, mandate, capability, membership, standing, or subject relationship the task presupposes. Where the task presupposes nothing beyond the *consumer*'s own policy, the specification **SHOULD** state so explicitly.
+
+    This declaration is descriptive on exactly the terms of items 13 and 14. It states what authority the task **assumes**, and **MUST NOT** be read as obliging a *consumer* to authorize execution merely because the described evidence is present; the authorization decision remains the *consumer*'s alone under [Consumer Requirements](#consumer-requirements) item 10. The bar in item 13 applies here unchanged: a specification **MUST NOT** declare, in any form, that a task does or does not require consent, human approval, or an authentication step-up.
+
+    A specification **MAY** additionally declare that a verified assertion carried by the task *is* authorization evidence for a stated purpose — the design [Consumer Requirements](#consumer-requirements) item 10 contemplates, in which a proof is relied upon as authorization rather than merely as integrity. Such a declaration **MUST** name the purpose and **MUST NOT** extend beyond it, and remains subject to the *consumer*'s policy accepting the assertion for that purpose.
+
+    Unlike items 5, 8, 12, 13, and 14, this declaration is satisfied in the specification's prose and has no front-matter field; it is not machine-validated.
+
+16. **Execution checkpoints (multi-stage consequential tasks)** — a specification describing multi-stage consequential execution **SHOULD** identify any additional points at which validity or authority is expected to be re-evaluated, beyond the one [Consumer Requirements](#consumer-requirements) item 12 requires before each irreversible effect. A specification whose stages must not be partially applied **SHOULD** say so explicitly, so that a *consumer* deciding whether to stop knows which of stopping and continuing its author considered the safer failure.
+
+    Where the specification defines its own completion deadline — an instant after which the task's outcome is no longer meaningful — it declares that in its `payload` and states what lapsing means for the task. The framework's `expiresAt` bounds acceptance only ([Top-Level Members](#top-level-members)) and **MUST NOT** be relied upon to terminate execution.
+
+A worked example of a *Trust Task specification* satisfying these requirements appears in [Appendix A](#appendix-a-example-trust-task-specification).
+
+## Error Responses
+
+*This section is normative.*
+
+A [[ref: recipient party]] that cannot or will not act upon a received [[ref: Trust Task document]] **MAY** return an *[[ref: error response]]* describing why. Error responses are themselves [[ref: Trust Task documents]] of a framework-defined type, so that one validation, signing, and transport pipeline serves both successful tasks and their refusals.
+
+The framework distinguishes the two reply forms cleanly:
+
+* A **success response** uses the request's [[ref: Type URI]] with the fragment `#response` (see [Request and Response Variants](#request-and-response-variants)). Its payload shape is defined by the originating [[ref: Trust Task specification]].
+* An **error response** uses the framework's distinct `trust-task-error` *Type URI* (defined below). Its payload shape is defined by this framework, independent of the originating specification.
+
+A *recipient party* **MUST NOT** report failure by emitting a `#response`-variant document of the originating spec, nor success by emitting a `trust-task-error` document. The two reply types are not interchangeable.
+
+### The trust-task-error Specification
+
+The framework reserves the slug `trust-task-error` for the error-response *Trust Task specification* at:
+
+```
+https://trusttasks.org/spec/trust-task-error/<MAJOR.MINOR>
+```
+
+An *error response* is a *Trust Task document* whose `type` is the URI above. Its `payload` carries the standard error structure defined in [Error Payload](#error-payload). The `id` member of an *error response* identifies the error instance and **MUST NOT** be reused; correlation back to the original task being responded to is carried by the framework's `threadId` member ([The `threadId` Member](#the-threadid-member)).
+
+The *error response*'s `issuer` is the [[ref: consumer]] that emitted it (the *reporting consumer* in the conformance language of the `trust-task-error` specification at [Reserved Response-Type Slugs](#reserved-response-type-slugs)). Its `recipient` is the party the *consumer* wishes to inform of the failure. For most rejections — `expired`, `unsupportedType`, `unsupportedVersion`, `proofRequired`, `proofInvalid`, `taskFailed`, and the rest of [Standard Error Codes](#standard-error-codes) — that party is the *original producer* as carried in the rejected document's in-band `issuer` member.
+
+The exception is `identityMismatch` (and any rejection raised in the same evaluation step that surfaced the mismatch): under such a rejection the rejected document's in-band `issuer` is by definition the contested identity, and **MUST NOT** be used as the error response's `recipient`. A *consumer* that emits an error response under `identityMismatch` **MUST** address the response to the transport-authenticated sender of the rejected document, and **MUST NOT** address it to the in-band `issuer`. Where no transport-authenticated sender is available, the *consumer* **SHOULD NOT** emit an error response at all — sending one to the contested in-band identity would constitute an oracle, and (in any transport that signs error responses) would compel the *consumer* to emit a signed document about a party that did not in fact participate in the exchange.
+
+The *consumer* **MUST** likewise sanitize the `payload.message` member of an `identityMismatch` error response: a free-text message that reveals the *consumer*'s expected transport-authenticated identity, or the contested in-band value, leaks identity information to a possibly hostile sender (see [Security Considerations](#security-considerations)). The standard wire form for this code is the code identifier alone, optionally accompanied by a non-identifying message (e.g. `"identityMismatch: in-band identity does not match transport-derived identity"`).
+
+### Error Payload
+
+The `payload` of an *error response* has the following members. The correlation back to the *Trust Task document* this error reports on is carried at the framework level by the `threadId` member ([The `threadId` Member](#the-threadid-member)), which a [[ref: producer]] of an error response **MUST** set.
+
+`threadId` correlates the exchange for a party that saw the originating request. It identifies nothing to anyone else: it is opaque, and the payload otherwise names neither the *Trust Task specification* the failure occurred under nor the document instance that triggered it. A party handed a retained error — a verifier evaluating it as evidence, an auditor reconstructing a sequence — sees a `code` and a `retryable` flag and cannot tell what failed. For an extended code the slug namespace ([Extension by Individual Trust Task Specifications](#extension-by-individual-trust-task-specifications)) hints at the family; for the standard codes of [Standard Error Codes](#standard-error-codes) there is no signal at all.
+
+The `inResponseTo` member closes that. A *consumer* emitting an error response **SHOULD** populate it, and **MUST** populate it where the error is intended to be retained, replayed, or relied upon by parties beyond the original *producer* — the same condition under which [When to Include a Proof](#when-to-include-a-proof) makes a `proof` mandatory, and for the same reason: an error that cannot be attributed *and* cannot be identified is not evidence of anything. Its `typeUri` carries the reported-on document's `type` including any `#request` or `#response` fragment, which is what tells a consumer whose semantics apply to an extended `code`; its `id` carries that document's [[ref: document identifier]], which [The `id` Member](#the-id-member) makes globally unique and never reused, so it names one instance where `threadId` names an exchange.
+
+Under `identityMismatch` a *consumer* **SHOULD** omit `inResponseTo.id`: per [The trust-task-error Specification](#the-trust-task-error-specification) the response is addressed to the transport-authenticated sender rather than the in-band `issuer`, and that party did not necessarily compose the document whose identifier would be echoed.
+
+| Member | Required | Type | Description |
+|---|---|---|---|
+| `code` | **MUST** | string | A short identifier for the failure category. **MUST** be one of the codes in [Standard Error Codes](#standard-error-codes) or an extended code as defined in [Extension by Individual Trust Task Specifications](#extension-by-individual-trust-task-specifications). |
+| `inResponseTo` | **SHOULD** | object | Identifies the *Trust Task document* this error reports on: `typeUri` (its `type`, including any fragment) and `id` (its *document identifier*). See below. |
+| `message` | **SHOULD** | string | A human-readable description of the error. Non-normative; intended for logs and operator UI. |
+| `retryable` | **MUST** | boolean | `true` if the *producer* of the original document **MAY** retry the task; `false` if retrying with the same document or credentials is not expected to succeed. |
+| `retryAfter` | **MAY** | string (date-time) | An [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339) timestamp before which the *producer* **SHOULD NOT** retry. Meaningful only when `retryable` is `true`. |
+| `details` | **MAY** | object | Task-specific extension data; see [Extension by Individual Trust Task Specifications](#extension-by-individual-trust-task-specifications). |
+
+> **Example 5 — An error response** *(non-normative)*
+>
+> ```json
+> {
+>   "id": "9e2a1c44-7b81-4d3e-9b51-7a3c89e3d1f2",
+>   "type": "https://trusttasks.org/spec/trust-task-error/0.2",
+>   "threadId": "4f3c9e2a-1b81-4d3e-9b51-7a3c89e3d1f2",
+>   "issuer": "did:web:bank.example",
+>   "recipient": "did:web:verifier.example",
+>   "issuedAt": "2026-05-16T14:22:00Z",
+>   "payload": {
+>     "code": "expired",
+>     "message": "Task expired at 2026-04-12T09:31:00Z.",
+>     "retryable": false
+>   },
+>   "proof": {
+>     "type": "DataIntegrityProof",
+>     "cryptosuite": "eddsa-rdfc-2022",
+>     "verificationMethod": "did:web:bank.example#key-1",
+>     "created": "2026-05-16T14:22:00Z",
+>     "proofPurpose": "assertionMethod",
+>     "proofValue": "z58D..."
+>   }
+> }
+> ```
+
+### Standard Error Codes
+
+The framework defines the error codes listed below. A *conforming consumer* **MUST** recognize each of these codes and **MUST** apply the corresponding semantics.
+
+| Code | Meaning | Default `retryable` |
+|---|---|---|
+| `malformedRequest` | The document did not validate against the framework schema or the task-specific payload schema. | `false` |
+| `unsupportedType` | The *consumer* does not recognize the `type` URI. | `false` |
+| `unsupportedVersion` | The `type` URI was recognized but its `MAJOR.MINOR` version is not supported. | `false` |
+| `expired` | The document's `expiresAt` was in the past at the time of evaluation. | `false` |
+| `proofRequired` | A `proof` was required (by the *Trust Task specification* or *consumer* policy) and was missing. | `false` |
+| `proofInvalid` | A `proof` was present but failed verification. | `false` |
+| `permissionDenied` | The requesting [[ref: party]] is not authorized to invoke this task. | `false` |
+| `wrongRecipient` | The document's `recipient` does not identify the receiving *consumer*. | `false` |
+| `identityMismatch` | An in-band `issuer` or `recipient` value is inconsistent with the corresponding transport-authenticated identity. | `false` |
+| `idConflict` | The document's `id` matches one the *consumer* has already accepted, but its content differs — see [Consumer Requirements](#consumer-requirements) item 11. | `false` |
+| `cancelled` | The *consumer* stopped the task on its own initiative — operator action, policy, capacity, or a compliance hold. Distinct from a *producer*-requested cancellation, which is answered by a response to the control document ([Task Control](#task-control)). | `false` |
+| `taskFailed` | The *recipient party* attempted the task and could not complete it; further detail **SHOULD** appear in `details`. | varies |
+| `unavailable` | The *recipient party* is temporarily unable to process the task. | `true` |
+| `internalError` | The *recipient party* encountered an unexpected internal failure. | `true` |
+
+The "Default `retryable`" column gives the value an emitter of an error response **SHOULD** use unless task-specific knowledge dictates otherwise. The actual `retryable` value carried in a given *error response* is authoritative.
+
+### Retry Semantics
+
+In this specification, "retrying" means re-sending a *Trust Task document* bit-for-bit identical to the one that elicited the *error response* — same `id`, same `payload`, same `proof`. Issuing a *new* document, even one addressing the same underlying intent, is not a retry; see below.
+
+A *party* that receives an *error response* **MUST NOT** retry the original *Trust Task document* if `retryable` is `false`. When `retryable` is `true`, the party **SHOULD** wait at least until any `retryAfter` value before retrying, and **SHOULD** apply backoff appropriate to the transport in use.
+
+Retrying is safe for a [[ref: consequential Trust Task]] precisely because [Consumer Requirements](#consumer-requirements) item 11 requires the *consumer* to absorb the duplicate rather than execute it again. The two rules are one mechanism seen from each end: this section tells a *producer* that the only safe resend is the bit-for-bit identical document, and item 11 tells a *consumer* that a bit-for-bit identical document it has already accepted **MUST NOT** produce a second consequential effect. A *producer* that "retries" by re-signing, re-stamping `issuedAt`, or otherwise altering the bytes has not retried — it has issued a different document under a reused `id`, which item 11 requires the *consumer* to reject with `idConflict` ([Standard Error Codes](#standard-error-codes)). Where a *producer* genuinely needs a fresh attempt, it issues a new document with a fresh `id`, as the paragraph below describes.
+
+A `false` value of `retryable` represents a hard failure for that specific document. It does not prohibit the *producer* from issuing a *new* *Trust Task document* — that is, a document with a fresh `id` (and **SHOULD** the same `threadId` to preserve correlation) — addressing the cause of the failure. For example, after receiving an *error response* of `code = proofInvalid` with `retryable = false`, the *producer* **MUST NOT** re-send the failed document, but **MAY** issue a new document carrying a valid `proof`.
+
+### Extension by Individual Trust Task Specifications
+
+An individual *Trust Task specification* **MAY** define additional error codes specific to its task. Extended codes **MUST** be namespaced, separated from the local code by a colon, e.g. `kyc-handoff:documentRevoked`. The namespace **MUST** be one of exactly two things:
+
+1. **The emitting specification's own `<slug>`** — that is, the slug of the *request* the *error response* refers to. This is the default and covers any code the specification defines for itself.
+2. **A *family namespace*** — a proper path prefix of that slug, formed of one or more of its leading `/`-separated segments (for `did-management/did/delete`, the permitted prefixes are `did-management/did` and `did-management`). A family namespace **MUST** be used only for a code whose meaning is defined once for the whole family — in a shared convention that the family's specifications reference — and never to give a specification-specific code a broader name than it has earned.
+
+The namespace **MUST NOT** be the slug of a *related or referenced* specification, and this remains true under rule 2: a proper prefix of a specification's own slug names that specification's own family and can never name a sibling. A *consumer* of `acl/change-role` that needs to surface a rejection borrowed conceptually from `acl/revoke` therefore emits `acl/change-role:<local>` or `acl:<local>`, never `acl/revoke:<local>`. Extended codes **MUST NOT** shadow any code listed in [Standard Error Codes](#standard-error-codes).
+
+*This paragraph is non-normative.* Rule 2 exists because families do share failure modes. Every specification under `did-management` can reject a request naming a domain the *consumer* does not host, and that rejection means the same thing in each of them; stating it once as `did-management:unknownDomain` lets a *consumer* handle the family uniformly, where per-slug codes would oblige it to enumerate every member to recognize one condition. The narrowness of rule 2 is what keeps this safe: because a family namespace is always a prefix of the emitting slug, a *consumer* can verify the namespacing of a received code against the document's `type` alone, with no registry lookup.
+
+A *consumer* (not only the spec author) **MAY** mint additional namespaced codes for invariants the specification did not enumerate, provided the namespacing rule above is honoured. The framework's fallback-to-`taskFailed` rule for unrecognized extended codes (see the third paragraph below) keeps these consumer-minted codes interoperable with clients that only implement the canonical set.
+
+An individual *Trust Task specification* **MAY** also define the structure of `details` for its own error responses. Where it does so, the specification **MUST** state which `code` values may carry a `details` object and **MUST** provide a JSON Schema fragment describing the `details` shape for each.
+
+A *consumer* that does not recognize an extended `code` **SHOULD** treat the error as if its code were `taskFailed` and **MUST** still honor the `retryable` and `retryAfter` members.
+
+The `details` member defined here is distinct from the `ext` extension member defined in [The `ext` Extension Member](#the-ext-extension-member). `details` carries *task-specific structured data tied to a specific error `code`*, defined by the spec author; its shape is constrained by the JSON Schema fragment the specification publishes for each carrying code. `ext` carries *vendor-namespaced extension data at payload or nested-object level*, defined by the ecosystem; its namespace structure is opaque to the framework. Both members **MAY** appear on the same *error response* and serve different purposes — implementations **MUST NOT** treat them as interchangeable.
+
+> **Example 6 — An error response with an extended code and `details`** *(non-normative)*
+>
+> ```json
+> {
+>   "id": "c4d2f713-9a8e-4d04-b29c-2f1b0b4cbe71",
+>   "type": "https://trusttasks.org/spec/trust-task-error/0.2",
+>   "threadId": "4f3c9e2a-1b81-4d3e-9b51-7a3c89e3d1f2",
+>   "issuer": "did:web:bank.example",
+>   "recipient": "did:web:verifier.example",
+>   "issuedAt": "2026-05-16T14:22:00Z",
+>   "payload": {
+>     "code": "kyc-handoff:documentRevoked",
+>     "message": "Passport used in verification was revoked by the issuing authority on 2026-05-10.",
+>     "retryable": false,
+>     "details": {
+>       "documentRef": "urn:passport:NL:XYZ123456",
+>       "revokedAt": "2026-05-10T08:00:00Z"
+>     }
+>   }
+> }
+> ```
+>
+> A *consumer* implementing the `kyc-handoff` *Trust Task specification* interprets the extended `code` per that specification's declarations (see [Specification Requirements](#specification-requirements), item 9). A *consumer* that does not implement `kyc-handoff` treats the error as if `code = taskFailed`, retains `retryable = false`, and ignores the contents of `details`.
+
+### Reserved Response-Type Slugs
+
+The framework reserves the following additional response-type *Trust Task specification* slugs. These slugs **MUST NOT** be used for any individual *Trust Task specification* registered under [Type URI](#type-uri).
+
+| Slug | Purpose |
+|---|---|
+| `trust-task-ok` | A courtesy acknowledgement — confirming that a task defining no success response of its own was received and performed, and optionally surfacing opaque references the *consumer* chose to share. Never relied upon. |
+| `trust-task-next-step` | A recipient-suggested continuation — indicating that the original task was understood but cannot complete in isolation, together with the next [[ref: Trust Task]] the *recipient party* expects in order to proceed. |
+
+`trust-task-next-step` is published; its registry entry at `https://trusttasks.org/spec/trust-task-next-step/0.1` defines the normative `payload` shape and conformance requirements, in the same relationship to this section that the `trust-task-discovery` entry has to [Discovery and Capability Negotiation](#discovery-and-capability-negotiation). A *next step* is a **third** disposition alongside the success response and the *error response* of this section: it reports that the originating task was understood and is **blocked**, leaving the exchange open where the other two close it. A *consumer* **MUST NOT** report a blocked task as an *error response*, nor a refusal as a *next step*; the three replies are not interchangeable. A *next step* confers no authorization — the *Type URI* it names is a suggestion the receiving party evaluates under its own policy, on the same advisory footing as a discovery response ([Status of the Discovery Response](#status-of-the-discovery-response)).
+
+`trust-task-ok` is published; its registry entry at `https://trusttasks.org/spec/trust-task-ok/0.1` defines the normative `payload` shape. It is a **courtesy acknowledgement**: a *consumer* **MAY** return one to confirm that it received and performed a *Trust Task* whose specification defines no success-response document of its own, and **MUST NOT** send one in place of a response a specification does define — two success dispositions for one task leave a *producer* unable to tell which is authoritative.
+
+Its weakness is deliberate. A *producer* **MUST NOT** rely on receiving an acknowledgement, and **the absence of one carries no information**: a *consumer* may not implement the specification, may implement it and not send one, or the document may be lost. A *producer* that reads absence as failure and reissues a *consequential Trust Task* causes exactly the duplicate effect [Consumer Requirements](#consumer-requirements) item 11 exists to prevent. Accordingly an acknowledgement that genuinely matters — one a third party will rely on, audit, or dispute — is **not** this document: such a task declares its own success response, or a dedicated receipt task with its own proof requirement.
+
+Implementations encountering a *Trust Task document* of a reserved type whose specification is not yet published **MAY** ignore the document or **MAY** return an `unsupportedVersion` *error response*.
+
+## Transport Bindings
+
+*This section is normative.*
+
+The framework deliberately leaves transport unconstrained ([Design Goals](#design-goals) Goal 1): a [[ref: Trust Task document]] can be conveyed over any channel that preserves its content. To make that composability work in practice, each transport protocol used to carry [[ref: Trust Task documents]] **SHOULD** be accompanied by a [[ref: transport binding]] specification.
+
+A *transport binding* defines how *Trust Task documents* are exchanged over a specific transport — for example, DIDComm, the IETF Trust Spanning Protocol (TSP), HTTPS with mutual-TLS, AMQP, or paper. It is the integration layer between the framework's transport-agnostic semantics and the realities of a particular transport.
+
+### What a Transport Binding Specifies
+
+A *transport binding* **SHOULD** specify each of the following:
+
+* **Document carriage.** How a *Trust Task document* is placed onto and retrieved from the transport (request body, message payload, envelope field, attachment, etc.).
+* **Field population from transport context.** Which framework members the binding **derives** from transport-derived information — typically `issuer` (from a transport-authenticated sender), `recipient` (from a transport-authenticated addressee), and any signature metadata that lets a [[ref: consumer]] verify the framework `proof` against transport-bound keys or, per [When to Include a Proof](#when-to-include-a-proof), accept the document without an in-band `proof`. Per [Precedence of In-Band over Transport-Derived Identity](#precedence-of-in-band-over-transport-derived-identity), the binding fills these members from the transport **only when the corresponding in-band member is absent**; when the in-band member is present, the transport-derived value is used as a cross-check, not as a substitute.
+* **Consistency enforcement.** The behavior when an in-band framework member and its transport-derived equivalent disagree. The framework requires they **MUST** be consistent (see [The `issuer` and `recipient` Members](#the-issuer-and-recipient-members), [Precedence of In-Band over Transport-Derived Identity](#precedence-of-in-band-over-transport-derived-identity), and [Consumer Requirements](#consumer-requirements)); the binding states how the comparison is performed for the transport in question (for example, how a DID carried in-band is matched against a transport-authenticated DID).
+* **Thread correlation (where the transport has its own).** Several transports carry their own correlation and parent-correlation identifiers — DIDComm's `thid` and `pthid`, for example. Where a binding maps these onto the framework's `threadId` ([The `threadId` Member](#the-threadid-member)) and `parentThreadId` ([The `parentThreadId` Member](#the-parentthreadid-member)), it **MUST** state that mapping, and the mapping **MUST** require the two to agree only when **both** are explicitly present. The two layers identify different things and typically default into their own identifier spaces — a transport's correlation identifier commonly falls back to that transport's own message identifier, which is not the *Trust Task document*'s `id` — so requiring agreement unconditionally would fail exchanges that are otherwise conforming. As everywhere else in [Precedence of In-Band over Transport-Derived Identity](#precedence-of-in-band-over-transport-derived-identity), the in-band member is authoritative and the transport value is a cross-check; a [[ref: producer]] **SHOULD** populate the transport's identifiers from the framework members rather than the reverse. A disagreement is a structural inconsistency and is reported as `malformedRequest`, not `identityMismatch` — no party's identity is in dispute.
+* **Transport security profile.** The integrity, authentication, confidentiality, and freshness guarantees the transport provides, so that [[ref: consumers]] can correctly evaluate the `proof` requirement under [When to Include a Proof](#when-to-include-a-proof). A *transport binding* from which any framework security or identity requirement is derived — any binding that populates `issuer` or `recipient` from transport context, or that addresses the omission of `proof` — **MUST** specify this profile; for such a binding the item is not optional. See [Permitting `proof` to Be Omitted](#permitting-proof-to-be-omitted).
+* **Error and response delivery.** How an [[ref: error response]] ([Error Responses](#error-responses)) is returned to the *producer* of the original document, including the behavior when the transport is fire-and-forget.
+
+#### Permitting `proof` to Be Omitted
+
+[When to Include a Proof](#when-to-include-a-proof) permits a *Trust Task document* to omit `proof` where the transport already provides end-to-end integrity and authentication between *producer* and *consumer*. Whether a given transport does so is not a property a *consumer* can read off the transport's name: it depends on where the security boundary actually terminates, and on what intermediaries can do to a document in flight.
+
+A *transport binding* that permits a *Trust Task document* to omit `proof` under [When to Include a Proof](#when-to-include-a-proof) **MUST** specify the security properties on which that allowance depends. That specification **MUST** address each of the following, and **MUST** state explicitly where an item does not apply to the transport rather than leaving it unaddressed:
+
+1. **The authenticated producer.** Which credential or transport principal is authenticated, and by which mechanism.
+2. **The mapping to a VID.** How that principal is deterministically mapped to the [[ref: VID]] used for the framework's identity comparisons ([Precedence of In-Band over Transport-Derived Identity](#precedence-of-in-band-over-transport-derived-identity)).
+3. **Audience binding.** How the intended *consumer* is identified or bound, and whether that binding is authenticated or merely asserted.
+4. **Integrity across intermediaries.** What protects the document's bytes across every party that handles them.
+5. **Re-origination.** Whether any intermediary can modify or re-originate the document without detection by the final *consumer*.
+6. **Freshness and replay.** What protection, if any, the transport provides against a document being delivered more than once or out of time.
+7. **Key and credential status.** Any revocation, expiry, or key-status assumption the allowance depends on.
+8. **Where the guarantee stops.** Any condition — a routing mode, a mediator, a proxy, a store-and-forward queue — under which the transport ceases to provide producer-to-consumer end-to-end protection.
+
+A *transport binding* **MUST NOT** state that `proof` may be omitted solely because an individual transport hop is authenticated, where an intermediary can modify or re-originate the *Trust Task document* without detection by the final *consumer*. Hop authentication tells the *consumer* who handed it the bytes, which is not the same fact as who composed them.
+
+Where a binding's guarantees differ by mode — direct versus routed, nested versus not, mediated versus point-to-point — the allowance **MUST** be stated per mode. A single allowance covering a transport that has both an end-to-end mode and a relayed one overstates the weaker case.
+
+**Silence is not permission.** A *transport binding* that does not address the omission of `proof` **MUST NOT** be read as permitting it, and a *consumer* operating over such a binding evaluates the `proof` requirement from [When to Include a Proof](#when-to-include-a-proof) and the [[ref: Trust Task specification]] alone, as it would over a transport with no binding at all. A binding whose transport does not provide producer-to-consumer end-to-end integrity and authentication **SHOULD** say so plainly; that statement is as useful to an implementer as an allowance, and it is what stops a familiar transport name from being read as a guarantee it does not give.
+
+### The Transport Handler
+
+An implementation that exchanges *Trust Task documents* over a given transport **SHOULD** expose its transport-binding logic as a discrete *transport handler* component:
+
+1. On the **producer** side, the handler composes an outbound *Trust Task document*, **MAY** omit `issuer` and `recipient` where the transport will provide authenticated identity for those roles end-to-end (see [Precedence of In-Band over Transport-Derived Identity](#precedence-of-in-band-over-transport-derived-identity)), and applies the transport's signing or sealing where the binding integrates it with `proof`.
+2. On the **consumer** side, the handler extracts an inbound *Trust Task document* from the transport, applies the [Precedence of In-Band over Transport-Derived Identity](#precedence-of-in-band-over-transport-derived-identity) precedence — using in-band `issuer` and `recipient` values where present (cross-checking them against transport-derived identity) and deriving them from the transport only where the in-band member is absent — and surfaces any inconsistencies as validation failures per [Consumer Requirements](#consumer-requirements).
+
+The handler boundary lets the framework's validation logic remain transport-agnostic while different transports plug in their own population rules. A DIDComm handler can populate `issuer` from the verified sender DID of the surrounding DIDComm envelope; a TSP handler can do the same from the TSP message authentication; a mutual-TLS HTTPS handler can populate `issuer` from the peer certificate's subject; an unauthenticated transport handler populates nothing, and the framework falls back to the in-band `proof` per [When to Include a Proof](#when-to-include-a-proof).
+
+A *transport binding* specification **SHOULD** identify itself by a stable URI and **SHOULD** declare which version of this framework it targets. The framework does not maintain a closed registry of [[ref: transport bindings]]; new bindings **MAY** be published independently.
+
+### Binding Namespace
+
+A *transport binding* published through the framework's registry is identified by a URI in the `/binding/` subtree of the framework's authority:
+
+```
+https://trusttasks.org/binding/<slug>/<MAJOR.MINOR>
+```
+
+`<slug>` follows the same lowercase, hyphenated grammar as a Trust Task slug ([Type URI](#type-uri)); `<MAJOR.MINOR>` follows the version grammar of [Version Scheme](#version-scheme). Additional path segments under a binding URI — for example `https://trusttasks.org/binding/didcomm/0.1/envelope` — identify resources internal to the binding's own vocabulary (envelope `type` values, schema URIs, status mappings, and similar). Those segments are defined by the *transport binding* specification, not by this framework.
+
+The `/binding/` subtree and the `/spec/` subtree of [Type URI](#type-uri) are **structurally disjoint**. A [[ref: Type URI]] — the value carried in a *Trust Task document*'s `type` member ([The `type` Member](#the-type-member)) — is always rooted at `/spec/<slug>/<MAJOR.MINOR>` and **MUST NOT** be rooted at `/binding/...`. A *consumer* that receives a *Trust Task document* whose `type` is a URI under `/binding/` **MUST** reject it with `malformedRequest` per [Standard Error Codes](#standard-error-codes). The Type URI grammar of [Type URI](#type-uri) already excludes the `/binding/` path; this rule is stated explicitly so implementers and reviewers can see the namespace boundary at a glance and so that documents which somehow construct a `/binding/...` `type` value have a defined disposition rather than relying on grammar mismatch alone.
+
+A *transport binding* specification published through the registry **SHOULD** live at `bindings/<slug>/<MAJOR.MINOR>/spec.md` in the framework's source tree, paralleling the `specs/<slug>/<MAJOR.MINOR>/` layout for [[ref: Trust Task specifications]]. The grammar and content requirements for *transport binding* specifications are defined in [What a Transport Binding Specifies](#what-a-transport-binding-specifies).
+
+The reservation rule of [Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications) — that private specifications **MUST NOT** be served from the `https://trusttasks.org/` authority — applies to private transport bindings equivalently: a private transport binding **MUST** use an authority the publisher controls and **MUST NOT** claim to identify a resource at `https://trusttasks.org/binding/...`.
+
+## Discovery and Capability Negotiation
+
+*This section is normative.*
+
+Two parties about to enter a [[ref: Trust Task]] exchange often need to negotiate a shared task vocabulary first: a [[ref: producer]] asks "which [[ref: Trust Tasks]] are you prepared to act upon?" before committing to send any particular document. The framework supports this with a reserved [[ref: Trust Task specification]] of its own: `trust-task-discovery`.
+
+The slug `trust-task-discovery` is reserved by [Type URI](#type-uri) under the framework's `trust-task-` namespace. Its current published version lives at:
+
+```
+https://trusttasks.org/spec/trust-task-discovery/0.1
+```
+
+Its registry entry defines the full request/response payload schema and conformance requirements. This section gives the framework-level overview; for the normative definitions of `payload.patterns` semantics, response shape, and conformance, see that registry entry.
+
+### Discovery Request
+
+A *discovery request* is a [[ref: Trust Task document]] whose `type` is `https://trusttasks.org/spec/trust-task-discovery/0.1`. Its `payload` carries an optional list of slug-glob patterns:
+
+```json
+{
+  "patterns": ["acl/*", "kyc-handoff"]
+}
+```
+
+When `patterns` is absent or empty, the *responder* treats the query as `["*"]` — return every supported *Trust Task*.
+
+### Pattern Grammar
+
+Patterns are deliberately coarse. The grammar is:
+
+* `"*"` — matches every slug.
+* `"<prefix>/*"` — matches every slug whose value starts with the literal `<prefix>/` (e.g. `"acl/*"` matches `acl/grant`, `acl/revoke`, and `acl/grant/sub`).
+* `"<slug>"` — exact match.
+
+Wildcards in positions other than as the trailing `/*` of a `<prefix>/*` pattern are **not** interpreted; they match literally. Multiple patterns combine with **OR** semantics: a slug matches the query if it matches at least one pattern.
+
+The grammar omits version filters, recursive globs (`**`), and regex on purpose. Versions are part of the [[ref: Type URI]] the responder returns; a discoverer that needs to filter on version applies the constraint client-side.
+
+### Discovery Response
+
+A *discovery response* is a *Trust Task document* whose `type` is `https://trusttasks.org/spec/trust-task-discovery/0.1#response`. Its `payload` carries the matching subset of [[ref: Type URIs]] the responder supports:
+
+```json
+{
+  "supportedTypes": [
+    "https://trusttasks.org/spec/acl/grant/0.1",
+    "https://trusttasks.org/spec/acl/revoke/0.1",
+    "https://trusttasks.org/spec/kyc-handoff/1.0"
+  ]
+}
+```
+
+Each entry is a **bare** *Type URI* — no `#request` or `#response` fragment. A *Type URI*'s presence in `supportedTypes` means the responder handles both directions of that specification's exchange.
+
+A response with `"supportedTypes": []` is conformant and means "I support nothing matching your query."
+
+### Status of the Discovery Response
+
+A *discovery response* is **advisory**. A *Type URI*'s presence is a hint that the responder will accept a *Trust Task document* of that type, not a binding commitment: the responder may have revoked support, may apply per-document permissions, or may itself receive a `proofInvalid` or `permissionDenied` at the point of acting on a subsequent request. Every subsequent exchange runs the full [Consumer Requirements](#consumer-requirements) pipeline; discovery only narrows what the discoverer chooses to send.
+
+### Privacy of Discovery Responses
+
+A discovery response leaks information about which specifications the responder implements. Responders that consider their supported task set sensitive **SHOULD** authenticate the discoverer before responding, and **MAY** return a filtered subset of their true capabilities (or no response at all) when the discoverer is unknown or unauthenticated. See the discovery spec's "Privacy considerations" section for additional discussion.
+
+## Task Control
+
+*This section is normative.*
+
+Acceptance of a [[ref: Trust Task document]], or commencement of execution upon it, **MUST NOT** by itself make the requested work semantically irrevocable. This section defines transport-independent semantics by which a [[ref: producer]] can withdraw or pause work a [[ref: consumer]] has already accepted.
+
+The mechanism is a *Trust Task document* like any other, of the framework-reserved specification `trust-task-control` ([Type URI](#type-uri)). It is a **request**, not a response: it flows from *producer* to *consumer*, and is therefore not one of the reserved response-type slugs of [Reserved Response-Type Slugs](#reserved-response-type-slugs). Its payload, its response variant, and its conformance requirements are defined by its registry entry.
+
+The framework defines three operations: **cancel**, **suspend**, and **resume**. The corresponding operation for a *consumer* that stops work on its own initiative is not a control operation at all — it is an [[ref: error response]] carrying `cancelled` ([Standard Error Codes](#standard-error-codes)), because a *consumer* refusing or abandoning work is already the case [Error Responses](#error-responses) covers. The two directions are deliberately not symmetric: only a *producer* sends a control document, and only a *consumer* emits `cancelled`, so that no party and no auditor need infer from a document alone which of them decided.
+
+### Control Authorization
+
+The [[ref: party]] identified by the target document's `issuer` is authorized to cancel, suspend, or resume that task **by default**; a *consumer* **MUST NOT** require further authorization evidence from that party. Where the target document carried no in-band `issuer`, the authorized party is the identity authenticated for it under [Precedence of In-Band over Transport-Derived Identity](#precedence-of-in-band-over-transport-derived-identity).
+
+Whether a *consumer* honors a control document from **any other** *party* is that *consumer*'s own decision under [Consumer Requirements](#consumer-requirements) item 10, evaluated exactly as for any other [[ref: Trust Task]]. This is a floor, not a ceiling: a *consumer* executing work on behalf of a mandate holder, a supervising principal, or an organization whose agent initiated the task **MAY** recognize that party's authority to stop it, under its own policy and applicable governance framework. The framework does not foreclose that, and a *consumer* that recognizes only the initiator is equally conformant.
+
+A control document **MUST** carry a `proof`, and the [Audience Binding](#audience-binding) rule applies to it. A control operation that cannot be attributed is worthless as evidence of withdrawal, and an unattributable one is a denial-of-service vector against another party's work. Membership of a [[ref: Trust Ceremony]] confers no authority here, exactly as [Membership Is a Claim, Not a Permission](#membership-is-a-claim-not-a-permission) provides generally.
+
+### Identifying the Target
+
+A control document **MUST** identify the specific *Trust Task document* to which it applies, by that document's `id`. It **SHOULD** also carry the target's `type`, so that a *consumer* can detect a control document aimed at an `id` it holds under a different [[ref: Trust Task specification]], and **SHOULD** carry the same `threadId` as the target so the two correlate within one exchange.
+
+`threadId`, `parentThreadId`, and `ceremony` membership **MUST NOT**, by themselves, identify the controlled task. More than one *Trust Task document* can occur within a single exchange or [[ref: enactment]], and an operation naming only the exchange is ambiguous exactly when it matters most — in a flow busy enough to have several tasks in flight.
+
+### When a Control Operation Takes Effect
+
+**A valid, authorized control operation that a *consumer* has received is one of the conditions that [Consumer Requirements](#consumer-requirements) item 12 requires it to re-evaluate before each irreversible or externally visible effect.** This is the normative connection between the two mechanisms, and it is stated here explicitly rather than left to be inferred from item 12's general wording.
+
+A *consumer* therefore does not need a separate race protocol. Having received and authorized a cancellation or suspension, it records it; at the next item 12 checkpoint the condition fails, and item 12 already requires that the subsequent effect **MUST NOT** be performed and that partial execution be reported distinguishably from a task that was never begun.
+
+Where an irreversible or externally visible effect has **already** occurred, a *consumer* **MUST NOT** report the task as cleanly cancelled. It reports what occurred, so that the *producer* can determine whether a compensating action is required (see [Control Does Not Roll Back](#control-does-not-roll-back)).
+
+**Cancellation is terminal.** A cancelled task **MUST NOT** be resumed, retried, or cancelled again; a *producer* that still wants the work issues a **new** *Trust Task document* with a fresh `id`. This is the same line [Retry Semantics](#retry-semantics) draws for error responses, and for the same reason: a document with two contradictory lifecycle states cannot be reasoned about by any party that retains it.
+
+A control document **MAY** arrive before the *Trust Task document* it names — ordinary on asynchronous and store-and-forward transports. A *consumer* **SHOULD** record it against the target `id` and refuse the later-arriving document rather than execute it. The record required by [Consumer Requirements](#consumer-requirements) item 11 serves this purpose and is bounded by the same acceptance window; a control document naming an `id` whose window has lapsed has nothing to match, and is reported as such. The item 11 record **MUST** survive cancellation for the remainder of that window, so that a re-delivery of the original document after cancellation is absorbed rather than executed.
+
+### Control Does Not Roll Back
+
+Cancellation prevents future effects. It **MUST NOT** be understood to undo effects that have already occurred, and this framework does not require a *consumer* to retain state for the purpose of reversing them.
+
+Many effects are irreversible by construction — [Specification Requirements](#specification-requirements) item 13 defines `destructive` in those terms — and for many others the state needed to reverse the effect is precisely the material the task existed to destroy or to disclose. Where an effect can be undone at all, the undoing is a distinct act with its own authority, its own audit trail, and frequently its own *Trust Task specification*; a *Trust Task specification* **MAY** name such a compensating task in its prose, and a *consumer* **MUST NOT** be presumed to perform one automatically.
+
+What the framework requires instead is **information**: the response to a control operation reports which effects were created before the operation took hold, so that the *producer* can decide whether to invoke a compensating task itself.
+
+### Suspension and Resumption
+
+A suspension **halts further effects while preserving the *consumer*'s current execution state**. It does not return the task to a pre-execution state, and it does not undo work already performed — that would be the rollback [Control Does Not Roll Back](#control-does-not-roll-back) declines to require. Resumption continues from the state the *consumer* holds.
+
+A *consumer* **MUST NOT** resume a suspended task after the target document's `expiresAt`. Resumption is a fresh decision to proceed — the acceptance question of [Consumer Requirements](#consumer-requirements) item 4, asked a second time — whereas execution already in progress is protected by item 12's deliberate exclusion of expiry from the conditions it re-evaluates. A suspension preserves state; it does not preserve an indefinite right to restart. A *producer* that still wants the work issues a new document.
+
+A control document **MUST NOT** carry an instruction that a suspension resume automatically after an interval of the *producer*'s choosing. Such an interval is a deadline the *producer* cannot calculate — it does not know how long the *consumer*'s work takes — and it lets a *producer* pin *consumer* state for a period of its own election. How long a *consumer* retains a suspended task is that *consumer*'s own policy, bounded by `expiresAt` where present.
+
+### Notifications, and the Meaning of Silence
+
+A *party* **SHOULD** notify its counterparty when a task is cancelled or when a suspended task lapses, so that the other side can release whatever state it holds. Such notifications are **fire-and-forget**: no response is expected, and a *consumer* that does not implement task control emits none.
+
+Accordingly: **no *party* may infer the state of a task from the absence of a notification.** A notification may be lost, discarded by an intermediary, or never sent. A *producer* that reads silence as "still running" waits indefinitely; one that reads it as "safely abandoned" and reissues can cause exactly the second consequential effect that [Consumer Requirements](#consumer-requirements) item 11 exists to prevent.
+
+The response to a control document is **not** such a notification. It is a reply to a request, its content is relied upon under [Control Does Not Roll Back](#control-does-not-roll-back), and it is subject to the ordinary rules of [Request and Response Variants](#request-and-response-variants).
+
+### Transport-Level Cancellation Is Not Semantic Cancellation
+
+Cancelling a transport operation — abandoning an HTTP request, cancelling a queue delivery, closing a session, discarding an execution handle — terminates *that delivery*. It **MUST NOT** be interpreted as semantic cancellation of the underlying *Trust Task*, unless the applicable [[ref: transport binding]] carries a framework-defined control operation with equivalent semantics ([Transport Bindings](#transport-bindings)).
+
+A *Trust Task document* that has been accepted, queued, forwarded, or handed to a worker survives the connection that delivered it, and may be held by a *consumer* the withdrawing *party* is no longer in contact with. A *consumer* that treats a dropped connection as a withdrawal will stop work the *producer* still wants; a *producer* that treats one as a withdrawal will believe it has stopped work that is still running.
+
+### Support Is Optional
+
+A *consumer* that does not implement task control rejects a control document with `unsupportedType` ([Standard Error Codes](#standard-error-codes)), as it would any other unrecognized `type`. Task control is therefore **best-effort**, and a *producer* **MUST NOT** rely on a cancellation having been honored in the absence of a response confirming it. A *consumer* that does implement it **SHOULD** advertise `trust-task-control` through discovery ([Discovery and Capability Negotiation](#discovery-and-capability-negotiation)), so that a *producer* can establish before the wire trip whether the work it is about to request can later be stopped.
 
 ## Security Considerations
 
-{{REQUIRED for all ToIP specifications. This section SHOULD be formatted as either a numbered list or numbered subsections. [See this IETF guidance](https://www.ietf.org/archive/id/draft-flanagan-7322bis-07.html#name-security-considerations-sec) and also the Security Considerations sections in [DID Core](https://www.w3.org/TR/did-1.0/#security-considerations) and [W3C VC](https://www.w3.org/TR/vc-data-model/#security-considerations).}}
+*This section is informative.* Future revisions are expected to make portions of it normative as individual Trust Task specifications surface concrete requirements.
+
+A [[ref: Trust Task document]] carries no inherent transport security. The framework's default rules for when an integrity proof is required of a document are given in [When to Include a Proof](#when-to-include-a-proof), and each [[ref: Trust Task specification]] declares its own requirement under [Specification Requirements](#specification-requirements). When `proof` is included, it **MUST** conform to the W3C *Data Integrity* format defined in [VC Data Integrity](https://www.w3.org/TR/vc-data-integrity/) (see [Proof](#proof)); implementations select an appropriate cryptographic suite from the W3C-registered set based on the trust requirements agreed by the parties.
+
+### Cross-Recipient Replay
+
+A *Trust Task document* signed without an in-band `recipient` provides no cryptographic binding between the [[ref: producer]]'s assertion and the intended audience. An attacker who obtains such a document — from a [[ref: consumer]]'s storage, an intermediate cache, or an exfiltration — can replay the bytes to a different *consumer*; the proof verifies against the original *producer*'s VID, and a recipient who does not know the *producer*'s out-of-band intent has no signal that the assertion was not made to them. The [Audience Binding](#audience-binding) rule is the primary defence: when `proof` is present, `recipient` is also required in-band, and consumers reject any document that violates this rule with `malformedRequest`. *Bearer specifications* ([Bearer Specifications](#bearer-specifications)) are the only specifications for which a `proof`-carrying document without an in-band `recipient` is conformant; bearer status is an intentional, normative property of the specification, not a consumer-side flag.
+
+Replay of the same document by the *original* recipient back into the same *consumer* (within transport bounds) is also possible. For a [[ref: consequential Trust Task]] this is not merely a threat to be mitigated by local caching: [Consumer Requirements](#consumer-requirements) item 11 makes duplicate-execution protection a normative consumer requirement, keyed on the document `id` and bounded by the *consumer*'s acceptance window. The rule deliberately does not distinguish a hostile replay from a legitimate transport retry, because at the document layer the two are indistinguishable — the same bytes arriving twice. What matters for interoperability is that the second arrival does not repeat the effect, whichever it was.
+
+Consumers handling assertions whose effect persists between exchanges but whose task is **not** consequential are outside item 11 and **SHOULD** still maintain such a cache for the lifetime of the assertion's relevance.
+
+### Parser Hardening
+
+A *consumer* deserializing untrusted JSON into a *Trust Task document* is exposed to the standard hazards of unbounded JSON parsing: deeply nested structures can cause stack overflow, large strings or arrays can exhaust memory, and integer overflows can occur on size fields. A *consumer* **SHOULD** bound the body size at the transport layer and **SHOULD** configure a maximum parse depth on the JSON deserializer. The framework does not mandate specific limits because they vary by deployment, but a depth limit of 128 levels and a body-size limit appropriate to the *Trust Task specification*'s payload (typically a few hundred kilobytes) are reasonable defaults.
+
+### Schema-Validation DoS
+
+A *consumer* that validates `payload` values against a JSON Schema obtained dynamically (for example, via [Content Negotiation](#content-negotiation) over the network) **MUST** treat the schema as trusted only after authenticating its source. A maliciously-crafted schema can carry `pattern` regular expressions that exhibit catastrophic backtracking on otherwise-innocuous strings, causing the validator to consume unbounded CPU and effectively become a DoS oracle for any *producer* able to choose payload values. Consumers that compile schemas from arbitrary authorities **SHOULD** apply per-validation timeouts.
+
+This consideration does **not** apply when the schema is embedded with the *consumer* at build time (for example, fetched from the registry once at release time, verified against [Stability](#stability) immutability, and shipped as part of the consumer's binary). It does apply to dynamic-registry scenarios and to consumers that accept private specifications ([Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications)) over a runtime channel.
+
+### Error-Response Identity Leakage
+
+A *consumer* emitting an [[ref: error response]] under [Error Responses](#error-responses) **MUST** treat the error response's `payload.message` as a wire-exposed value. Free-text messages that reveal the *consumer*'s expected transport-authenticated identity, the contested in-band value of a mismatched party, or other consumer-internal state convert each error response into an identity-probing oracle for an unauthenticated *producer*. The rule for `identityMismatch` is stated in [The trust-task-error Specification](#the-trust-task-error-specification); the same principle applies to every standard code: error messages **SHOULD** be derived from the code identifier and the *Trust Task specification*'s public vocabulary, not from consumer-side authentication context.
 
 ## Privacy Considerations
 
-{{REQUIRED for all ToIP specifications. This section SHOULD be formatted as either a numbered list or numbered subsections. [See this IETF guidance](https://datatracker.ietf.org/doc/html/rfc6973) and also the Privacy Considerations sections in [DID Core](https://www.w3.org/TR/did-1.0/#privacy-considerations) and [W3C VC](https://www.w3.org/TR/vc-data-model/#privacy-considerations).}}
+*This section is informative.* Future revisions are expected to make portions of it normative as individual Trust Task specifications surface concrete requirements.
+
+1. **Personal data is visible to every handler.** Personal data carried in a [[ref: Trust Task document]] is visible to every [[ref: party]] that handles the document. Individual [[ref: Trust Task specifications]] **SHOULD** minimize personal data in their schemas to that strictly necessary to achieve the task's outcome, and **SHOULD** prefer references (e.g. DID URLs) to direct attribute values where the relying party is able to dereference them.
+2. **Self-contained documents are durable evidence.** Because [[ref: Trust Task documents]] are self-contained, a captured document remains evidence of its content after it has been delivered. Producers **SHOULD** consider whether the document's contents are appropriate for indefinite retention by the consumer.
+3. **Discovery reveals an implementer's task set.** A discovery response tells the discoverer which *Trust Task specifications* the responder implements. Responders that consider that set sensitive **SHOULD** authenticate the discoverer before responding; see [Privacy of Discovery Responses](#privacy-of-discovery-responses).
+4. **Error responses can be identity oracles.** Free-text `payload.message` values that echo consumer-internal authentication context leak identity information to an unauthenticated [[ref: producer]]; see [Error-Response Identity Leakage](#error-response-identity-leakage).
 
 ## Governance Considerations
 
-{{RECOMMENDED for most ToIP specifications. This section SHOULD be formatted as either a numbered list or numbered subsections. This section SHOULD include any relevant references to the [ToIP governance metamodel](https://trustoverip.org/wp-content/uploads/ToIP-Governance-Metamodel-Specification-V1.0-2021-12-21.pdf). [See also this IETF guidance](https://www.ietf.org/archive/id/draft-attoumani-ietf-inclusion-00.html).}}
+*This section is informative.*
+
+This specification defines a document format and a namespace; it deliberately leaves the policy questions that surround them to the governance frameworks under which the parties operate, consistent with the [ToIP Governance Metamodel](https://trustoverip.org/wp-content/uploads/ToIP-Governance-Metamodel-Specification-V1.0-2021-12-21.pdf).
+
+1. The process by which a slug is assigned, by which a [[ref: Trust Task specification]] enters the registry, and by which its `status` is updated is governed by the registry policy maintained alongside the registry at <https://trusttasks.org/>. That policy is out of scope for this specification; see [Maturity Levels](#maturity-levels).
+2. The stability commitment of [Stability](#stability) is made by the public registry for the specifications it hosts. Publishers of private specifications make an equivalent commitment scoped to their own trust boundary; see [Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications).
+3. This framework prescribes **no** authorization model. Whether a [[ref: producer]] may request an outcome, and whether a [[ref: consumer]] may perform it, is determined by the *consumer*'s own policy and by the trust or governance framework it operates under; see [Consumer Requirements](#consumer-requirements) item 10.
+4. A *Trust Task specification* **MUST NOT** declare that a task does or does not require consent, human approval, or an authentication step-up. Such policy is not delegable to a specification or to the registry that serves it; see [Specification Requirements](#specification-requirements) items 13 and 14.
+5. *Transport bindings* are not subject to a closed registry: new bindings **MAY** be published independently of this framework, under the namespace rules of [Binding Namespace](#binding-namespace).
 
 ## Internationalization Considerations
 
-{{RECOMMENDED for most ToIP specifications. This section SHOULD be formatted as either a numbered list or numbered subsections. [See this IETF guidance](https://www.ietf.org/archive/id/draft-flanagan-7322bis-07.html#name-internationalization-consid).}}
+*This section is informative.*
+
+This specification defines a JSON document format. Two internationalization properties follow from it and are normative elsewhere in this document: a [[ref: Trust Task document]] **MUST** be encoded as UTF-8 without a byte-order mark ([Encoding](#encoding)), and every framework-defined member name and enumerated value is an ASCII lowerCamelCase identifier that is never translated ([Naming Conventions](#naming-conventions)).
+
+Human-readable values — the `message` member of an [[ref: error response]], and any natural-language field an individual [[ref: Trust Task specification]] defines in its `payload` — may appear in any language. This framework defines no language-tagging mechanism for them. Guidance on language negotiation and tagging for such values will be completed before this specification advances beyond Working Draft status.
 
 ## Accessibility Considerations
 
-{{RECOMMENDED for most ToIP specifications. This section SHOULD be formatted as either a numbered list or numbered subsections. [See this IETF guidance](https://datatracker.ietf.org/doc/html/rfc6973) and also the Accessibility Considerations section in [W3C VC](https://www.w3.org/TR/vc-data-model/#accessibility-considerations).}}
+*This section is informative.*
+
+This specification defines a data format exchanged between software components rather than a user interface, and places no direct accessibility requirements on implementers. Accessibility guidance for implementations that render [[ref: Trust Task documents]] — in particular consent prompts, approval dialogs, and the operator-facing surfaces implied by [Specification Requirements](#specification-requirements) items 13 and 14 — will be completed before this specification advances beyond Working Draft status.
 
 ## Conformance
 
-{{REQUIRED. This section should state what normative requirements (expressed using “MUST” or “SHALL” keywords) apply to which conformance targets. See the [Guidelines to Writing Conformance Clauses](https://docs.oasis-open.org/templates/TCHandbook/ConformanceGuidelines.html) from OASIS Open.}}
+*This section is normative.*
+
+As well as sections marked as informative, all authoring guidelines, diagrams, examples, and notes in this specification are informative. Everything else in this specification is normative.
+
+This specification defines normative requirements, using the keywords defined in [Requirements Language](#requirements-language), for the conformance targets below.
 
 ### Conformance Targets
 
+1. **Conforming Trust Task specification** — a document that satisfies [Trust Task Documents](#trust-task-documents), [Versioning](#versioning), [Namespace](#namespace), and [Specification Requirements](#specification-requirements).
+2. **Conforming producer** — an implementation that emits [[ref: Trust Task documents]] satisfying [Producer Requirements](#producer-requirements).
+3. **Conforming consumer** — an implementation that processes *Trust Task documents* satisfying [Consumer Requirements](#consumer-requirements).
+
+A [[ref: producer]] or [[ref: consumer]] that satisfies these requirements against a private, unpublished [[ref: Trust Task specification]] is a *conforming producer* or *conforming consumer* of that specification, exactly as it would be for a registry-published one; see [Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications).
+
 ### Conformance Tests
+
+A conformance test suite for this framework has not yet been published. The registry repository at <https://github.com/trustoverip/dtgwg-trust-tasks-tf> carries executable conformance material that is expected to form its basis: the framework envelope JSON Schema for each framework version, the payload schema of every registered *Trust Task specification*, and the generated Rust and TypeScript client libraries whose validation pipelines implement [Consumer Requirements](#consumer-requirements). A normative test suite will be defined before this specification advances beyond Working Draft status.
 
 ## References
 
-{{Required. See the [IETF guidance](https://www.ietf.org/archive/id/draft-flanagan-7322bis-07.html#name-references-section) on how to add normative references and informative references.}}
+*This section is informative.*
 
 ### Normative References
 
+- [IETF RFC 2119: Key words for use in RFCs to Indicate Requirement Levels](https://www.rfc-editor.org/rfc/rfc2119)
+- [IETF RFC 8174: Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words](https://www.rfc-editor.org/rfc/rfc8174)
+- [IETF RFC 3339: Date and Time on the Internet: Timestamps](https://www.rfc-editor.org/rfc/rfc3339)
+- [IETF RFC 3986: Uniform Resource Identifier (URI): Generic Syntax](https://www.rfc-editor.org/rfc/rfc3986)
+- [IETF RFC 8259: The JavaScript Object Notation (JSON) Data Interchange Format](https://www.rfc-editor.org/rfc/rfc8259)
+- [IETF RFC 9110: HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
+- [IETF RFC 8785: JSON Canonicalization Scheme (JCS)](https://www.rfc-editor.org/rfc/rfc8785)
+- [IETF RFC 9562: Universally Unique IDentifiers (UUIDs)](https://www.rfc-editor.org/rfc/rfc9562)
+- [IETF RFC 5234: Augmented BNF for Syntax Specifications (ABNF)](https://www.rfc-editor.org/rfc/rfc5234)
+- [W3C Verifiable Credential Data Integrity 1.0](https://www.w3.org/TR/vc-data-integrity/)
+- [JSON Schema: A Media Type for Describing JSON Documents, Draft 2020-12](https://json-schema.org/draft/2020-12/schema)
+- [W3C Decentralized Identifiers (DIDs) v1.0](https://www.w3.org/TR/did-core/)
+- [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html)
+
 ### Informative References
+
+- [W3C Verifiable Credentials Data Model v2.0](https://www.w3.org/TR/vc-data-model-2.0/)
+- [W3C Manual of Style](https://www.w3.org/guide/manual-of-style/)
+- [ToIP Governance Metamodel Specification V1.0](https://trustoverip.org/wp-content/uploads/ToIP-Governance-Metamodel-Specification-V1.0-2021-12-21.pdf)
+- [Trust Tasks registry](https://trusttasks.org/) — the published [[ref: Trust Task specifications]], [[ref: transport bindings]], and [[ref: ceremony definitions]] that conform to this framework
+- [Trust Tasks registry repository](https://github.com/trustoverip/dtgwg-trust-tasks-tf) — the source of the registry, the transport bindings, and the generated client libraries
+- [Decentralized Trust Graph Credentials — Core Specification](https://github.com/trustoverip/dtgwg-cred-spec) — the companion DTGWG credential specification whose `taskContext` binding cites Trust Task exchanges

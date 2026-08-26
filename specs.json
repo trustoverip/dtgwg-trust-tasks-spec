@@ -1,8 +1,8 @@
 {
   "specs": [
     {
-      "title": "ToIP Specification Template",
-      "description": "Create technical specifications in markdown. Based on the original Spec-Up, extended with Terminology tooling",
+      "title": "Trust Tasks",
+      "description": "The Trust Tasks framework: the document structure, version scheme, namespace, and conformance requirements shared by every individual Trust Task specification",
       "author": "Trust over IP Foundation",
       "spec_directory": "./spec",
       "spec_terms_directory": "terms-definitions",
@@ -20,7 +20,7 @@
       "source": {
         "host": "github",
         "account": "trustoverip",
-        "repo": "toip-template"
+        "repo": "dtgwg-trust-tasks-spec"
       },
       "external_specs": [
         {
