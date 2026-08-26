@@ -879,7 +879,7 @@ The *error response*'s `issuer` is the [[ref: consumer]] that emitted it (the *r
 
 The exception is `identityMismatch` (and any rejection raised in the same evaluation step that surfaced the mismatch): under such a rejection the rejected document's in-band `issuer` is by definition the contested identity, and **MUST NOT** be used as the error response's `recipient`. A *consumer* that emits an error response under `identityMismatch` **MUST** address the response to the transport-authenticated sender of the rejected document, and **MUST NOT** address it to the in-band `issuer`. Where no transport-authenticated sender is available, the *consumer* **SHOULD NOT** emit an error response at all — sending one to the contested in-band identity would constitute an oracle, and (in any transport that signs error responses) would compel the *consumer* to emit a signed document about a party that did not in fact participate in the exchange.
 
-The *consumer* **MUST** likewise sanitize the `payload.message` member of an `identityMismatch` error response: a free-text message that reveals the *consumer*'s expected transport-authenticated identity, or the contested in-band value, leaks identity information to a possibly hostile sender (see [Security Considerations](#security-considerations)). The standard wire form for this code is the code identifier alone, optionally accompanied by a non-identifying message (e.g. `"identityMismatch: in-band identity does not match transport-derived identity"`).
+The *consumer* **MUST** likewise sanitize the `payload.message` member of an `identityMismatch` error response: a free-text message that reveals the *consumer*'s expected transport-authenticated identity, or the contested in-band value, leaks identity information to a possibly hostile sender. The standard wire form for this code is the code identifier alone, optionally accompanied by a non-identifying message (e.g. `"identityMismatch: in-band identity does not match transport-derived identity"`). The general form of this rule — which binds every code, not only this one — is [What a `message` May Not Say](#what-a-message-may-not-say).
 
 ### Error Payload
 
@@ -895,10 +895,10 @@ Under `identityMismatch` a *consumer* **SHOULD** omit `inResponseTo.id`: per [Th
 |---|---|---|---|
 | `code` | **MUST** | string | A short identifier for the failure category. **MUST** be one of the codes in [Standard Error Codes](#standard-error-codes) or an extended code as defined in [Extension by Individual Trust Task Specifications](#extension-by-individual-trust-task-specifications). |
 | `inResponseTo` | **SHOULD** | object | Identifies the *Trust Task document* this error reports on: `typeUri` (its `type`, including any fragment) and `id` (its *document identifier*). See below. |
-| `message` | **SHOULD** | string | A human-readable description of the error. Non-normative; intended for logs and operator UI. |
+| `message` | **SHOULD** | string | A human-readable description of the error, subject to the disclosure rule of [What a `message` May Not Say](#what-a-message-may-not-say). Non-normative as to the cause of the failure; intended for logs and operator UI. |
 | `retryable` | **MUST** | boolean | `true` if the *producer* of the original document **MAY** retry the task; `false` if retrying with the same document or credentials is not expected to succeed. |
 | `retryAfter` | **MAY** | string (date-time) | An [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339) timestamp before which the *producer* **SHOULD NOT** retry. Meaningful only when `retryable` is `true`. |
-| `details` | **MAY** | object | Task-specific extension data; see [Extension by Individual Trust Task Specifications](#extension-by-individual-trust-task-specifications). |
+| `details` | **MAY** | object | Task-specific extension data; see [Extension by Individual Trust Task Specifications](#extension-by-individual-trust-task-specifications). Bounded per [Bounding `details`](#bounding-details). The framework itself defines the shape carried under the `cancelled` code; see [Effects Reported with `cancelled`](#effects-reported-with-cancelled). |
 
 > **Example 5 — An error response** *(non-normative)*
 >
@@ -926,6 +926,28 @@ Under `identityMismatch` a *consumer* **SHOULD** omit `inResponseTo.id`: per [Th
 > }
 > ```
 
+#### What a `message` May Not Say
+
+The `message` member is a **wire-exposed value**, and it is exposed under the least favourable conditions the framework has: an *error response* is emitted to a party the *consumer* has, by construction, just failed to validate; it is frequently emitted before any authorization decision has been reached ([Consumer Requirements](#consumer-requirements) item 10); and it is retainable by whoever receives it.
+
+A *consumer* emitting an *error response* **MUST NOT** place in `message`:
+
+1. **Consumer-internal state** — an internal identifier, a queue or worker name, a policy or rule name, a host name, a file or database path, a stack frame, or a software version.
+2. **The contested value of a mismatched party** — the in-band value the *consumer* rejected, or the transport-authenticated identity it expected instead. This is the rule already stated for `identityMismatch` in [The trust-task-error Specification](#the-trust-task-error-specification); it is restated here because it is not peculiar to that code.
+3. **Resolver, verifier, or key-status internals** — the URL the *consumer* dereferenced, a resolver's own error text, the verification method it tried, the status list it consulted, or the reason a signature failed beyond the fact that it did.
+
+A `message` **MUST** instead be derived from the `code` identifier and from the *Trust Task specification*'s public vocabulary — the same material the receiving party could have read for itself.
+
+This applies to **every** code in [Standard Error Codes](#standard-error-codes) and to every extended code, not only to `identityMismatch`. The rule was written for that code first because the leak is most obvious there, not because that is where it applies. Every other rejection is emitted on the same path, to the same possibly-unauthenticated party, and any consumer-internal fact placed in the message makes the *error response* an oracle: a sender that can vary one member of a document and read the message back can enumerate which identities the *consumer* recognizes, which identifiers it can resolve, and which of its dependencies are currently reachable — an identity- and reachability-probing instrument the *consumer* pays for and operates on the sender's behalf. The [[ref: consumer]]'s own logs are the correct place for everything this rule excludes; nothing here bars recording it locally, only sending it.
+
+#### Bounding `details`
+
+`details` is the one member of the error payload whose size the framework does not otherwise constrain, and it travels in the direction no bound reaches: a *producer* that bounded its request bounded nothing about the reply. It is also emitted on a failure path — the path least exercised in testing and most readily reached by an unauthenticated party.
+
+Accordingly, a *Trust Task specification* that defines a `details` shape for a code **MUST** declare a bound for it: a maximum serialized size, a maximum number of members, or both, alongside the JSON Schema fragment required by [Extension by Individual Trust Task Specifications](#extension-by-individual-trust-task-specifications). Where no bound is declared for the code being emitted, a *consumer* **MUST NOT** emit a `details` object exceeding **4096 bytes** of [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785)-canonicalized UTF-8 or **16** immediate members.
+
+A party receiving a `details` object that exceeds either bound **MUST NOT** reject the *error response* on that account — the response is already a failure report, and discarding it loses the `code` the party needs — but **MUST** ignore the contents of `details` and **MUST** still honor `code`, `retryable`, and `retryAfter`, on the same terms as the fallback for an unrecognized extended code. Any free-text member inside `details` is subject to [Specification Requirements](#specification-requirements) item 19 and to the disclosure rule of [What a `message` May Not Say](#what-a-message-may-not-say); `details` is not a route around either.
+
 ### Standard Error Codes
 
 The framework defines the error codes listed below. A *conforming consumer* **MUST** recognize each of these codes and **MUST** apply the corresponding semantics.
@@ -948,6 +970,27 @@ The framework defines the error codes listed below. A *conforming consumer* **MU
 | `internalError` | The *recipient party* encountered an unexpected internal failure. | `true` |
 
 The "Default `retryable`" column gives the value an emitter of an error response **SHOULD** use unless task-specific knowledge dictates otherwise. The actual `retryable` value carried in a given *error response* is authoritative.
+
+#### Effects Reported with `cancelled`
+
+A *consumer* emitting `cancelled` has stopped work it had accepted, and [Consumer Requirements](#consumer-requirements) item 12 already obliges it to distinguish **partial execution** from a task that was never begun — because a *producer* that cannot tell the two apart cannot decide whether to reissue, and because [Control Does Not Roll Back](#control-does-not-roll-back) makes clear that nothing is undone by stopping. What that obligation lacked was a shape: the same fact, reported to the same *producer*, is machine-readable when the *producer* asked for the stop and prose when the *consumer* decided on it.
+
+The framework therefore defines the `details` shape for the `cancelled` code as a single member, `effects`, whose value is an array of effect objects:
+
+| Member | Required | Type | Description |
+|---|---|---|---|
+| `description` | **MUST** | string | Human-readable statement of the effect that occurred. |
+| `ref` | **MAY** | string | An identifier for the effect where one exists — a credential identifier, a record identifier, a transaction reference — so that a compensating task can name it. |
+| `reversible` | **MAY** | boolean | Whether the *consumer* believes this effect can be compensated by a further [[ref: Trust Task]]. Advisory. Absent means unknown, which a *producer* **SHOULD** treat as no weaker than `false`. |
+
+This is deliberately the **same** array-of-effects shape the `trust-task-control` specification defines for the response to a *producer*-requested cancellation. The two report the identical fact — what had already landed when the stop took hold — and differ only in which party decided, which is a distinction the framework keeps precisely so that neither party has to infer it ([Task Control](#task-control)). A *producer* deciding whether to invoke a compensating task should not have to parse that decision out of prose in one direction and read it from an array in the other.
+
+The rules:
+
+1. A *consumer* emitting `cancelled` after one or more irreversible or externally visible effects have occurred **MUST** populate `effects` with one entry per effect.
+2. An `effects` value of `[]` means **nothing landed**. An **absent** `effects` member means the *consumer* did not report, and a *producer* **MUST NOT** read its absence as "nothing landed" — the general rule of [Document Lifecycle](#document-lifecycle) applies to an omitted member as it does to an absent reply.
+3. `description` is free text and is bound by [Specification Requirements](#specification-requirements) item 19 and by [What a `message` May Not Say](#what-a-message-may-not-say). It names the effect on the *recipient party*'s own state, which is what the *producer* needs; it **MUST NOT** name the internal mechanism that produced it.
+4. `effects` counts toward the bound of [Bounding `details`](#bounding-details). A *consumer* whose effect list would exceed it reports the effects that are consequential for the *producer* and says so in the last `description`, rather than truncating silently.
 
 ### Retry Semantics
 
@@ -1271,7 +1314,7 @@ This consideration does **not** apply when the schema is embedded with the *cons
 
 ### Error-Response Identity Leakage
 
-A *consumer* emitting an [[ref: error response]] under [Error Responses](#error-responses) **MUST** treat the error response's `payload.message` as a wire-exposed value. Free-text messages that reveal the *consumer*'s expected transport-authenticated identity, the contested in-band value of a mismatched party, or other consumer-internal state convert each error response into an identity-probing oracle for an unauthenticated *producer*. The rule for `identityMismatch` is stated in [The trust-task-error Specification](#the-trust-task-error-specification); the same principle applies to every standard code: error messages **SHOULD** be derived from the code identifier and the *Trust Task specification*'s public vocabulary, not from consumer-side authentication context.
+A *consumer* emitting an [[ref: error response]] under [Error Responses](#error-responses) treats the error response's `payload.message` as a wire-exposed value. Free-text messages that reveal the *consumer*'s expected transport-authenticated identity, the contested in-band value of a mismatched party, or other consumer-internal state convert each error response into an identity- and reachability-probing oracle for an unauthenticated *producer*. This was guidance in earlier revisions and is now normative for every code, extended codes included: the enumerated prohibitions and the reasoning are in [What a `message` May Not Say](#what-a-message-may-not-say), and the corresponding bound on `details` is in [Bounding `details`](#bounding-details). The code-specific rule for `identityMismatch` — which also governs who the response is addressed to — remains in [The trust-task-error Specification](#the-trust-task-error-specification).
 
 ## Privacy Considerations
 
