@@ -1119,6 +1119,8 @@ A *discovery request* is a [[ref: Trust Task document]] whose `type` is `https:/
 
 When `patterns` is absent or empty, the *responder* treats the query as `["*"]` — return every supported *Trust Task*.
 
+A *discovery request*'s `patterns` list **SHOULD** be bounded: the specification **SHOULD** declare a maximum number of patterns and a maximum length for each, and a *responder* **MAY** reject a request exceeding either with `malformedRequest`. A pattern list is evaluated against every slug the *responder* supports, so an unbounded list is an unbounded amount of matching work bought for one document — and unlike the free-text bound of [Specification Requirements](#specification-requirements) item 19, this one is paid by the party that did not choose it. A discoverer that wants everything sends `["*"]`, which costs one comparison.
+
 ### Pattern Grammar
 
 Patterns are deliberately coarse. The grammar is:
@@ -1152,6 +1154,22 @@ A response with `"supportedTypes": []` is conformant and means "I support nothin
 ### Status of the Discovery Response
 
 A *discovery response* is **advisory**. A *Type URI*'s presence is a hint that the responder will accept a *Trust Task document* of that type, not a binding commitment: the responder may have revoked support, may apply per-document permissions, or may itself receive a `proofInvalid` or `permissionDenied` at the point of acting on a subsequent request. Every subsequent exchange runs the full [Consumer Requirements](#consumer-requirements) pipeline; discovery only narrows what the discoverer chooses to send.
+
+### Authenticity of a Discovery Response
+
+A *discovery response* is advisory as to *content*, but a discoverer acts on it: it narrows what the discoverer chooses to send, and — through the capability annotations described below — can shape what a *producer* puts in the documents it sends next. An advisory document that is acted upon still has to be attributable.
+
+The `trust-task-discovery` specification declares its `proof` requirement **OPTIONAL**, on the rationale that a discovery exchange takes place between parties that "have already authenticated through the transport". That premise does not hold generally, and the framework has since said why it cannot be assumed from a transport's name: [Permitting `proof` to Be Omitted](#permitting-proof-to-be-omitted) requires a [[ref: transport binding]] to establish the point explicitly, and at least one published binding — the HTTPS binding — states in its own security profile that it provides **no** producer-to-consumer end-to-end guarantee. A discovery exchange over such a binding is one between parties that have authenticated nothing.
+
+Accordingly, from this version:
+
+1. The `proof` requirement applicable to the `trust-task-discovery` specification is **RECOMMENDED**, not **OPTIONAL**. This is a framework default under [When to Include a Proof](#when-to-include-a-proof), so [Specification Requirements](#specification-requirements) item 8 forbids the specification's own declaration being weaker; the registry entry is expected to be re-issued to match.
+
+2. A *discoverer* **MUST NOT** act upon a *discovery response* whose origin it can authenticate neither in-band — from a `proof` resolving to an `issuer` it recognizes — nor from the transport. This mirrors the rule the `trust-task-next-step` specification already imposes on a continuation, and for the same reason: an unauthenticated redirection is indistinguishable from an injected one. "Act upon" here means narrowing the task set the discoverer will send, satisfying an advertised requirement, or recording the response as evidence of what a party supports; a discoverer that cannot authenticate the response **MAY** still discard it, log it, or retry.
+
+3. **A responder's advertised requirements are untrusted input.** The expanded form of a `supportedTypes` entry may carry capability annotations — the `requiredExt` namespace list of [Consumer Requirements](#consumer-requirements) being the one the 0.1 specification defines. Such an annotation is a statement by the responder about the responder's own policy. It **MUST NOT** cause a *producer* to attach to a subsequent *Trust Task document* any data it would not otherwise have sent: a *producer* satisfies an advertised requirement only where it independently holds the data, is willing to disclose it to that party, and would have been willing to do so had the requirement never been advertised. A *producer* that treats an advertised requirement as an instruction has handed the choice of what leaves it to whoever answered the query — which, absent rule 2, is whoever answered it *first*.
+
+    A *producer* unwilling or unable to satisfy an advertised requirement simply does not send the task. The alternative reading turns a discovery response into a data-collection instrument that costs an attacker one unauthenticated reply.
 
 ### Privacy of Discovery Responses
 
