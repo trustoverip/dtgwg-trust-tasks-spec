@@ -3,6 +3,7 @@
 _Version:_ 0.5.0  
 _Document Status:_ Working Draft  
 _Last Updated:_ 2026-08-26  
+_GitHub:_ <https://github.com/trustoverip/dtgwg-trust-tasks-spec>
 <!-- _DOI:_ To be assigned when this specification reaches ToIP Approved Deliverable status. See https://lf-toip.atlassian.net/wiki/spaces/HOME/pages/767787009/ToIP+Approved+Deliverable+Process#Persistent-DOI-Link -->
 
 _Editors:_
