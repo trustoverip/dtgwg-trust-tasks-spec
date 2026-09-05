@@ -294,7 +294,7 @@ customElements.define("slide-panels",class extends HTMLElement{static get observ
 <li>The participants of the Trust Tasks Task Force of the Decentralized Trust Graph Working Group (DTGWG)</li>
 </ul>
 <p><strong>Abstract</strong></p>
-<p>This document defines the <strong>Trust Tasks</strong> framework: a specification for the verifiable work that occurs between two or more parties. A Trust Task is a self-contained, transport-agnostic, JSON-based description of an outcome that two parties agree to achieve. This framework specification defines the document structure, version scheme, namespace, and conformance requirements that every individual Trust Task specification — published under the registry at <code>https://trusttasks.org/</code> — is expected to satisfy. Individual Trust Task specifications (for example, the <code>kyc-handoff</code> specification at <code>https://trusttasks.org/spec/kyc-handoff/1.0</code>) are conforming refinements of this framework.</p>
+<p>This document defines the <strong>Trust Tasks</strong> framework: a specification for the verifiable work that occurs between two or more parties. A Trust Task is a self-contained, transport-agnostic, JSON-based description of an outcome that two parties agree to achieve. This framework specification defines the document structure, version scheme, namespace, and conformance requirements that every individual Trust Task specification — published under the registry at <code>https://trusttasks.org/</code> — is expected to satisfy. Individual Trust Task specifications (for example, the <code>acl/change-role</code> specification at <code>https://trusttasks.org/spec/acl/change-role/0.1</code>) are conforming refinements of this framework.</p>
 <p><strong>Intellectual Property Rights</strong></p>
 <p>This specification is provided under the <a href="https://cdn.platform.linuxfoundation.org/agreements/ToIP.pdf">Joint Development Foundation (JDF) charter</a> for <a href="https://trustoverip.org">Trust Over IP</a> (ToIP) and is subject to the intellectual property rights policy of the <strong>Decentralized Trust Graph Working Group (DTGWG)</strong>:</p>
 <p><em>Copyright:</em> <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International (CC BY 4.0)</a><br>
@@ -480,19 +480,27 @@ customElements.define("slide-panels",class extends HTMLElement{static get observ
 <p><strong>Example 1 — A complete Trust Task document</strong> <em>(non-normative)</em></p>
 <pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
   <span class="token property">"id"</span><span class="token operator">:</span> <span class="token string">"4f3c9e2a-1b81-4d3e-9b51-7a3c89e3d1f2"</span><span class="token punctuation">,</span>
-  <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/kyc-handoff/1.0"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:verifier.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:bank.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-04-12T09:31:00Z"</span><span class="token punctuation">,</span>
-  <span class="token property">"expiresAt"</span><span class="token operator">:</span> <span class="token string">"2027-04-12T09:31:00Z"</span><span class="token punctuation">,</span>
+  <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/acl/change-role/0.1"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:org.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:maintainer.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-06-10T14:00:00Z"</span><span class="token punctuation">,</span>
+  <span class="token property">"expiresAt"</span><span class="token operator">:</span> <span class="token string">"2026-06-11T14:00:00Z"</span><span class="token punctuation">,</span>
   <span class="token property">"payload"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
-    <span class="token property">"subject"</span><span class="token operator">:</span> <span class="token string">"did:key:z6Mk..."</span><span class="token punctuation">,</span>
-    <span class="token property">"result"</span><span class="token operator">:</span> <span class="token string">"passed"</span><span class="token punctuation">,</span>
-    <span class="token property">"level"</span><span class="token operator">:</span> <span class="token string">"LOA2"</span>
+    <span class="token property">"subject"</span><span class="token operator">:</span> <span class="token string">"did:web:bob.example"</span><span class="token punctuation">,</span>
+    <span class="token property">"fromRole"</span><span class="token operator">:</span> <span class="token string">"member"</span><span class="token punctuation">,</span>
+    <span class="token property">"toRole"</span><span class="token operator">:</span> <span class="token string">"moderator"</span>
+  <span class="token punctuation">}</span><span class="token punctuation">,</span>
+  <span class="token property">"proof"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+    <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"DataIntegrityProof"</span><span class="token punctuation">,</span>
+    <span class="token property">"cryptosuite"</span><span class="token operator">:</span> <span class="token string">"eddsa-rdfc-2022"</span><span class="token punctuation">,</span>
+    <span class="token property">"verificationMethod"</span><span class="token operator">:</span> <span class="token string">"did:web:org.example#key-1"</span><span class="token punctuation">,</span>
+    <span class="token property">"created"</span><span class="token operator">:</span> <span class="token string">"2026-06-10T14:00:00Z"</span><span class="token punctuation">,</span>
+    <span class="token property">"proofPurpose"</span><span class="token operator">:</span> <span class="token string">"assertionMethod"</span><span class="token punctuation">,</span>
+    <span class="token property">"proofValue"</span><span class="token operator">:</span> <span class="token string">"z5xy..."</span>
   <span class="token punctuation">}</span>
 <span class="token punctuation">}</span>
 </code></pre>
-<p>The <code>payload</code> member is the only part whose internal shape is defined by the per-task specification; everything else is framework-defined. This example carries no <code>proof</code> member; it therefore assumes delivery over a transport that provides end-to-end integrity and authentication between <a class="term-reference" href="#term:producer">producer</a> and <em>consumer</em>. A document delivered over a less protective transport, or one expected to be relied upon by third parties beyond the original <em>consumer</em>, would carry a <code>proof</code> member (see <a href="#when-to-include-a-proof">When to Include a Proof</a>).</p>
+<p>The <code>payload</code> member is the only part whose internal shape is defined by the per-task specification; everything else is framework-defined. This example carries a <code>proof</code> member because the <em>Trust Task specification</em> it names declares <code>proof</code> <strong>REQUIRED</strong> — a role change is retained as the evidentiary record of how privilege was acquired, and is relied upon after delivery. The framework itself leaves <code>proof</code> <strong>OPTIONAL</strong>: a document of a specification that does not require one is conforming without it, provided it is delivered over a transport that supplies end-to-end integrity and authentication between <a class="term-reference" href="#term:producer">producer</a> and <em>consumer</em> (see <a href="#when-to-include-a-proof">When to Include a Proof</a>).</p>
 </blockquote>
 <h3 id="the-id-member" tabindex="-1"><a class="toc-anchor d-print-none" href="#the-id-member">§</a> The <code>id</code> Member</h3>
 <p>The <code>id</code> member’s value <strong>MUST</strong> be a string that is globally unique to this instance of the task. The framework places no further constraint on its form: UUIDv4 <a href="https://www.rfc-editor.org/rfc/rfc9562">RFC 9562</a> is <strong>RECOMMENDED</strong> as a low-coordination default that requires no namespace ownership, but any string an implementation can guarantee unique is permitted — for example, a DID URL, a UUIDv7, a URN, or an opaque content-addressed identifier. Producers <strong>MUST NOT</strong> reuse an <code>id</code> value across documents.</p>
@@ -602,21 +610,21 @@ customElements.define("slide-panels",class extends HTMLElement{static get observ
 <pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
   <span class="token property">"@context"</span><span class="token operator">:</span> <span class="token punctuation">[</span>
     <span class="token string">"https://www.w3.org/ns/credentials/v2"</span><span class="token punctuation">,</span>
-    <span class="token string">"https://trusttasks.org/spec/kyc-handoff/1.0"</span>
+    <span class="token string">"https://trusttasks.org/spec/acl/change-role/0.1"</span>
   <span class="token punctuation">]</span><span class="token punctuation">,</span>
   <span class="token property">"id"</span><span class="token operator">:</span> <span class="token string">"urn:uuid:7d8b1e3a-9a72-4f86-9d04-2a4b6c2c5e10"</span><span class="token punctuation">,</span>
-  <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/kyc-handoff/1.0"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:verifier.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:bank.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-04-12T09:31:00Z"</span><span class="token punctuation">,</span>
+  <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/acl/change-role/0.1"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:org.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:maintainer.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-06-10T14:00:00Z"</span><span class="token punctuation">,</span>
   <span class="token property">"payload"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
-    <span class="token property">"subject"</span><span class="token operator">:</span> <span class="token string">"did:key:z6Mk..."</span><span class="token punctuation">,</span>
-    <span class="token property">"result"</span><span class="token operator">:</span> <span class="token string">"passed"</span><span class="token punctuation">,</span>
-    <span class="token property">"level"</span><span class="token operator">:</span> <span class="token string">"LOA2"</span>
+    <span class="token property">"subject"</span><span class="token operator">:</span> <span class="token string">"did:web:bob.example"</span><span class="token punctuation">,</span>
+    <span class="token property">"fromRole"</span><span class="token operator">:</span> <span class="token string">"member"</span><span class="token punctuation">,</span>
+    <span class="token property">"toRole"</span><span class="token operator">:</span> <span class="token string">"moderator"</span>
   <span class="token punctuation">}</span>
 <span class="token punctuation">}</span>
 </code></pre>
-<p>A <em>consumer</em> that implements JSON-LD processes the document accordingly; a <em>consumer</em> that does not implement JSON-LD ignores <code>@context</code> and processes the same document as plain JSON. The two interpretations validate against the same payload schema.</p>
+<p>A <em>consumer</em> that implements JSON-LD processes the document accordingly; a <em>consumer</em> that does not implement JSON-LD ignores <code>@context</code> and processes the same document as plain JSON. The two interpretations validate against the same payload schema. The second <code>@context</code> entry shows where a specification’s own context appears; the registered <code>acl/change-role</code> 0.1 does not publish one, and a <em>Trust Task specification</em> that wishes to declare a canonical context publishes it at its <em>Type URI</em> under content negotiation for <code>application/ld+json</code> as this section requires. The <code>proof</code> the specification requires is omitted throughout this example, which turns on <code>@context</code> alone.</p>
 </blockquote>
 <h3 id="proof" tabindex="-1"><a class="toc-anchor d-print-none" href="#proof">§</a> Proof</h3>
 <p>A <em>Trust Task document</em> <strong>MAY</strong> include a <code>proof</code> member whose value is a W3C <a class="term-reference" href="#term:data-integrity-proof">Data Integrity Proof</a> object as defined in <a href="https://www.w3.org/TR/vc-data-integrity/">VC Data Integrity</a>. When present, the <code>proof</code> binds the document’s content to its <code>issuer</code>.</p>
@@ -653,18 +661,18 @@ customElements.define("slide-panels",class extends HTMLElement{static get observ
 <p><strong>Example 3 — A Trust Task document using non-DID <a class="term-reference" href="#term:verifiable-identifiers">Verifiable Identifiers</a></strong> <em>(non-normative)</em></p>
 <pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
   <span class="token property">"id"</span><span class="token operator">:</span> <span class="token string">"urn:uuid:0e9d4c2b-5f81-4d3e-9b51-7a3c89e3d1f2"</span><span class="token punctuation">,</span>
-  <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/kyc-handoff/1.0"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"x509:CN=Verifier,O=Example Verifier Ltd,C=NL"</span><span class="token punctuation">,</span>
-  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"x509:CN=Bank,O=Example Bank,C=NL"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-04-12T09:31:00Z"</span><span class="token punctuation">,</span>
+  <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/acl/change-role/0.1"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"x509:CN=Operations,O=Example Org,C=NL"</span><span class="token punctuation">,</span>
+  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"x509:CN=Directory,O=Example Org,C=NL"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-06-10T14:00:00Z"</span><span class="token punctuation">,</span>
   <span class="token property">"payload"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
     <span class="token property">"subject"</span><span class="token operator">:</span> <span class="token string">"oidc:https://issuer.example/sub#user-94217"</span><span class="token punctuation">,</span>
-    <span class="token property">"result"</span><span class="token operator">:</span> <span class="token string">"passed"</span><span class="token punctuation">,</span>
-    <span class="token property">"level"</span><span class="token operator">:</span> <span class="token string">"LOA2"</span>
+    <span class="token property">"fromRole"</span><span class="token operator">:</span> <span class="token string">"member"</span><span class="token punctuation">,</span>
+    <span class="token property">"toRole"</span><span class="token operator">:</span> <span class="token string">"moderator"</span>
   <span class="token punctuation">}</span>
 <span class="token punctuation">}</span>
 </code></pre>
-<p>Here <code>issuer</code> and <code>recipient</code> are X.509 subject distinguished names and <code>payload.subject</code> is an OIDC subject identifier. The framework treats any string identifier whose controller is verifiable under the <em>consumer</em>’s trust framework as a valid <em>VID</em>; DIDs are one realization among several.</p>
+<p>Here <code>issuer</code> and <code>recipient</code> are X.509 subject distinguished names and <code>payload.subject</code> is an OIDC subject identifier. The framework treats any string identifier whose controller is verifiable under the <em>consumer</em>’s trust framework as a valid <em>VID</em>; DIDs are one realization among several. The <code>proof</code> the named specification requires is omitted for brevity; it plays no part in the point this example makes.</p>
 </blockquote>
 <h4 id="audience-binding" tabindex="-1"><a class="toc-anchor d-print-none" href="#audience-binding">§</a> Audience Binding</h4>
 <p>When a <em>Trust Task document</em> carries a <code>proof</code> member, the document <strong>MUST</strong> also carry an in-band <code>recipient</code> member, unless the <em>Trust Task specification</em> identified by the document’s <code>type</code> declares itself a <em>bearer specification</em> (see <a href="#bearer-specifications">Bearer Specifications</a>).</p>
@@ -725,21 +733,21 @@ customElements.define("slide-panels",class extends HTMLElement{static get observ
 <p>A <em>producer</em> issues an initiating <em>Trust Task document</em>:</p>
 <pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
   <span class="token property">"id"</span><span class="token operator">:</span> <span class="token string">"4f3c9e2a-1b81-4d3e-9b51-7a3c89e3d1f2"</span><span class="token punctuation">,</span>
-  <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/kyc-handoff/1.0"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:verifier.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:bank.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-04-12T09:31:00Z"</span><span class="token punctuation">,</span>
-  <span class="token property">"payload"</span><span class="token operator">:</span> <span class="token punctuation">{</span> <span class="token property">"subject"</span><span class="token operator">:</span> <span class="token string">"did:key:z6Mk..."</span><span class="token punctuation">,</span> <span class="token property">"result"</span><span class="token operator">:</span> <span class="token string">"passed"</span><span class="token punctuation">,</span> <span class="token property">"level"</span><span class="token operator">:</span> <span class="token string">"LOA2"</span> <span class="token punctuation">}</span>
+  <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/acl/change-role/0.1"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:org.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:maintainer.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-06-10T14:00:00Z"</span><span class="token punctuation">,</span>
+  <span class="token property">"payload"</span><span class="token operator">:</span> <span class="token punctuation">{</span> <span class="token property">"subject"</span><span class="token operator">:</span> <span class="token string">"did:web:bob.example"</span><span class="token punctuation">,</span> <span class="token property">"fromRole"</span><span class="token operator">:</span> <span class="token string">"member"</span><span class="token punctuation">,</span> <span class="token property">"toRole"</span><span class="token operator">:</span> <span class="token string">"moderator"</span> <span class="token punctuation">}</span>
 <span class="token punctuation">}</span>
 </code></pre>
-<p>The original document carried no <code>threadId</code>, so the responding <em>party</em> sets <code>threadId</code> to the originating document’s <code>id</code>:</p>
+<p>It carries no <code>proof</code>, and the specification it names declares one <strong>REQUIRED</strong>, so the <em>consumer</em> refuses it. The original document carried no <code>threadId</code>, so the responding <em>party</em> sets <code>threadId</code> to the originating document’s <code>id</code>:</p>
 <pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
   <span class="token property">"id"</span><span class="token operator">:</span> <span class="token string">"8a91c7b3-2e62-4a91-a3a4-9d61b75e2f01"</span><span class="token punctuation">,</span>
   <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/trust-task-error/0.2"</span><span class="token punctuation">,</span>
   <span class="token property">"threadId"</span><span class="token operator">:</span> <span class="token string">"4f3c9e2a-1b81-4d3e-9b51-7a3c89e3d1f2"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:bank.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:verifier.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-04-12T09:33:00Z"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:maintainer.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:org.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-06-10T14:00:02Z"</span><span class="token punctuation">,</span>
   <span class="token property">"payload"</span><span class="token operator">:</span> <span class="token punctuation">{</span> <span class="token property">"code"</span><span class="token operator">:</span> <span class="token string">"proofRequired"</span><span class="token punctuation">,</span> <span class="token property">"retryable"</span><span class="token operator">:</span> <span class="token boolean">false</span> <span class="token punctuation">}</span>
 <span class="token punctuation">}</span>
 </code></pre>
@@ -1110,7 +1118,7 @@ customElements.define("slide-panels",class extends HTMLElement{static get observ
 <p>For both forms, the path components below carry identical meaning:</p>
 <ul>
 <li>The URI scheme <strong>MUST</strong> be <code>https</code>. Other schemes (including <code>http</code>) are non-conformant: every representation served at a <em>Type URI</em> depends on transport-layer authentication and integrity, and permitting <code>http</code> would normalize a transport-downgrade path for any <a class="term-reference" href="#term:consumer">consumer</a> that dereferences the URI.</li>
-<li><code>&lt;slug&gt;</code> is a lowercase, hyphen-separated short name assigned to the specification, optionally organized into one or more path segments (e.g. <code>kyc-handoff</code>, or <code>acl/grant</code>). The slug <strong>MUST</strong> match the regular expression <code>^[a-z][a-z0-9]*(-[a-z0-9]+)*(/[a-z][a-z0-9]*(-[a-z0-9]+)*)*$</code>. Each <code>/</code>-delimited segment <strong>MUST</strong> individually satisfy the single-segment grammar (<code>^[a-z][a-z0-9]*(-[a-z0-9]+)*$</code>); consecutive hyphens are not permitted within a segment, and consecutive slashes are not permitted between segments. Segments group related specifications under a shared namespace and are reflected in the <em>Type URI</em> path verbatim — <code>https://trusttasks.org/spec/acl/grant/0.1</code> is the <em>Type URI</em> of a specification whose slug is <code>acl/grant</code>.</li>
+<li><code>&lt;slug&gt;</code> is a lowercase, hyphen-separated short name assigned to the specification, optionally organized into one or more path segments (e.g. <code>trust-task-discovery</code>, or <code>acl/grant</code>). The slug <strong>MUST</strong> match the regular expression <code>^[a-z][a-z0-9]*(-[a-z0-9]+)*(/[a-z][a-z0-9]*(-[a-z0-9]+)*)*$</code>. Each <code>/</code>-delimited segment <strong>MUST</strong> individually satisfy the single-segment grammar (<code>^[a-z][a-z0-9]*(-[a-z0-9]+)*$</code>); consecutive hyphens are not permitted within a segment, and consecutive slashes are not permitted between segments. Segments group related specifications under a shared namespace and are reflected in the <em>Type URI</em> path verbatim — <code>https://trusttasks.org/spec/acl/grant/0.1</code> is the <em>Type URI</em> of a specification whose slug is <code>acl/grant</code>.</li>
 <li><code>&lt;MAJOR.MINOR&gt;</code> is the specification version as defined in <a href="#version-scheme">Version Scheme</a>. The sole exception is the reserved slug <code>trust-task</code>, which addresses this framework specification and carries a three-part <code>&lt;MAJOR.MINOR.PATCH&gt;</code> segment instead (<a href="#versioning-of-this-framework-specification">Versioning of This Framework Specification</a>); every other slug, the framework-defined ones included, carries the two-part form. When resolving a <em>Type URI</em>, a <em>consumer</em> identifies the version as the final path segment (which always matches one of the two version grammars) and the slug as the segments between <code>/spec/</code> and the version.</li>
 </ul>
 <p>A <em>Type URI</em> used as the value of a <a class="term-reference" href="#term:trust-task-document">Trust Task document</a>'s <code>type</code> member <strong>MAY</strong> additionally carry the fragment <code>#request</code> or <code>#response</code>, with the meanings defined in <a href="#request-and-response-variants">Request and Response Variants</a>. The fragments <code>#request</code> and <code>#response</code> are <strong>RESERVED</strong>; no other fragment values are defined by this framework, and individual <em>Trust Task specifications</em> <strong>MUST NOT</strong> define their own.</p>
@@ -1498,19 +1506,19 @@ https://internal.example/spec/&lt;slug&gt;/&lt;MAJOR.MINOR&gt;
   <span class="token property">"id"</span><span class="token operator">:</span> <span class="token string">"9e2a1c44-7b81-4d3e-9b51-7a3c89e3d1f2"</span><span class="token punctuation">,</span>
   <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/trust-task-error/0.2"</span><span class="token punctuation">,</span>
   <span class="token property">"threadId"</span><span class="token operator">:</span> <span class="token string">"4f3c9e2a-1b81-4d3e-9b51-7a3c89e3d1f2"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:bank.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:verifier.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-05-16T14:22:00Z"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:maintainer.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:org.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-06-11T14:05:00Z"</span><span class="token punctuation">,</span>
   <span class="token property">"payload"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
     <span class="token property">"code"</span><span class="token operator">:</span> <span class="token string">"expired"</span><span class="token punctuation">,</span>
-    <span class="token property">"message"</span><span class="token operator">:</span> <span class="token string">"Task expired at 2026-04-12T09:31:00Z."</span><span class="token punctuation">,</span>
+    <span class="token property">"message"</span><span class="token operator">:</span> <span class="token string">"Task expired at 2026-06-11T14:00:00Z."</span><span class="token punctuation">,</span>
     <span class="token property">"retryable"</span><span class="token operator">:</span> <span class="token boolean">false</span>
   <span class="token punctuation">}</span><span class="token punctuation">,</span>
   <span class="token property">"proof"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
     <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"DataIntegrityProof"</span><span class="token punctuation">,</span>
     <span class="token property">"cryptosuite"</span><span class="token operator">:</span> <span class="token string">"eddsa-rdfc-2022"</span><span class="token punctuation">,</span>
-    <span class="token property">"verificationMethod"</span><span class="token operator">:</span> <span class="token string">"did:web:bank.example#key-1"</span><span class="token punctuation">,</span>
-    <span class="token property">"created"</span><span class="token operator">:</span> <span class="token string">"2026-05-16T14:22:00Z"</span><span class="token punctuation">,</span>
+    <span class="token property">"verificationMethod"</span><span class="token operator">:</span> <span class="token string">"did:web:maintainer.example#key-1"</span><span class="token punctuation">,</span>
+    <span class="token property">"created"</span><span class="token operator">:</span> <span class="token string">"2026-06-11T14:05:00Z"</span><span class="token punctuation">,</span>
     <span class="token property">"proofPurpose"</span><span class="token operator">:</span> <span class="token string">"assertionMethod"</span><span class="token punctuation">,</span>
     <span class="token property">"proofValue"</span><span class="token operator">:</span> <span class="token string">"z58D..."</span>
   <span class="token punctuation">}</span>
@@ -1662,7 +1670,7 @@ https://internal.example/spec/&lt;slug&gt;/&lt;MAJOR.MINOR&gt;
 <p>Retrying is safe for a <a class="term-reference" href="#term:consequential-trust-task">consequential Trust Task</a> precisely because <a href="#consumer-requirements">Consumer Requirements</a> item 11 requires the <em>consumer</em> to absorb the duplicate rather than execute it again. The two rules are one mechanism seen from each end: this section tells a <em>producer</em> that the only safe resend is the bit-for-bit identical document, and item 11 tells a <em>consumer</em> that a bit-for-bit identical document it has already accepted <strong>MUST NOT</strong> produce a second consequential effect. A <em>producer</em> that “retries” by re-signing, re-stamping <code>issuedAt</code>, or otherwise altering the bytes has not retried — it has issued a different document under a reused <code>id</code>, which item 11 requires the <em>consumer</em> to reject with <code>idConflict</code> (<a href="#standard-error-codes">Standard Error Codes</a>). Where a <em>producer</em> genuinely needs a fresh attempt, it issues a new document with a fresh <code>id</code>, as the paragraph below describes.</p>
 <p>A <code>false</code> value of <code>retryable</code> represents a hard failure for that specific document. It does not prohibit the <em>producer</em> from issuing a <em>new</em> <em>Trust Task document</em> — that is, a document with a fresh <code>id</code> (and <strong>SHOULD</strong> the same <code>threadId</code> to preserve correlation) — addressing the cause of the failure. For example, after receiving an <em>error response</em> of <code>code = proofInvalid</code> with <code>retryable = false</code>, the <em>producer</em> <strong>MUST NOT</strong> re-send the failed document, but <strong>MAY</strong> issue a new document carrying a valid <code>proof</code>.</p>
 <h3 id="extension-by-individual-trust-task-specifications" tabindex="-1"><a class="toc-anchor d-print-none" href="#extension-by-individual-trust-task-specifications">§</a> Extension by Individual Trust Task Specifications</h3>
-<p>An individual <em>Trust Task specification</em> <strong>MAY</strong> define additional error codes specific to its task. Extended codes <strong>MUST</strong> be namespaced, separated from the local code by a colon, e.g. <code>kyc-handoff:documentRevoked</code>. The namespace <strong>MUST</strong> be one of exactly two things:</p>
+<p>An individual <em>Trust Task specification</em> <strong>MAY</strong> define additional error codes specific to its task. Extended codes <strong>MUST</strong> be namespaced, separated from the local code by a colon, e.g. <code>acl/change-role:stateMismatch</code>. The namespace <strong>MUST</strong> be one of exactly two things:</p>
 <ol>
 <li><strong>The emitting specification’s own <code>&lt;slug&gt;</code></strong> — that is, the slug of the <em>request</em> the <em>error response</em> refers to. This is the default and covers any code the specification defines for itself.</li>
 <li><strong>A <em>family namespace</em></strong> — a proper path prefix of that slug, formed of one or more of its leading <code>/</code>-separated segments (for <code>did-management/did/delete</code>, the permitted prefixes are <code>did-management/did</code> and <code>did-management</code>). A family namespace <strong>MUST</strong> be used only for a code whose meaning is defined once for the whole family — in a shared convention that the family’s specifications reference — and never to give a specification-specific code a broader name than it has earned.</li>
@@ -1678,22 +1686,22 @@ https://internal.example/spec/&lt;slug&gt;/&lt;MAJOR.MINOR&gt;
 <pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
   <span class="token property">"id"</span><span class="token operator">:</span> <span class="token string">"c4d2f713-9a8e-4d04-b29c-2f1b0b4cbe71"</span><span class="token punctuation">,</span>
   <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/trust-task-error/0.2"</span><span class="token punctuation">,</span>
-  <span class="token property">"threadId"</span><span class="token operator">:</span> <span class="token string">"4f3c9e2a-1b81-4d3e-9b51-7a3c89e3d1f2"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:bank.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:verifier.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-05-16T14:22:00Z"</span><span class="token punctuation">,</span>
+  <span class="token property">"threadId"</span><span class="token operator">:</span> <span class="token string">"7b1e4d09-3c62-4a17-9f2d-51c8ab3e7d40"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:maintainer.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:org.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-06-12T11:04:00Z"</span><span class="token punctuation">,</span>
   <span class="token property">"payload"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
-    <span class="token property">"code"</span><span class="token operator">:</span> <span class="token string">"kyc-handoff:documentRevoked"</span><span class="token punctuation">,</span>
-    <span class="token property">"message"</span><span class="token operator">:</span> <span class="token string">"Passport used in verification was revoked by the issuing authority on 2026-05-10."</span><span class="token punctuation">,</span>
+    <span class="token property">"code"</span><span class="token operator">:</span> <span class="token string">"acl/change-role:roleNotRecognized"</span><span class="token punctuation">,</span>
+    <span class="token property">"message"</span><span class="token operator">:</span> <span class="token string">"Role 'principal' is not part of this ACL's role vocabulary."</span><span class="token punctuation">,</span>
     <span class="token property">"retryable"</span><span class="token operator">:</span> <span class="token boolean">false</span><span class="token punctuation">,</span>
     <span class="token property">"details"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
-      <span class="token property">"documentRef"</span><span class="token operator">:</span> <span class="token string">"urn:passport:NL:XYZ123456"</span><span class="token punctuation">,</span>
-      <span class="token property">"revokedAt"</span><span class="token operator">:</span> <span class="token string">"2026-05-10T08:00:00Z"</span>
+      <span class="token property">"offendingRole"</span><span class="token operator">:</span> <span class="token string">"principal"</span><span class="token punctuation">,</span>
+      <span class="token property">"knownRoles"</span><span class="token operator">:</span> <span class="token punctuation">[</span><span class="token string">"member"</span><span class="token punctuation">,</span> <span class="token string">"moderator"</span><span class="token punctuation">,</span> <span class="token string">"admin"</span><span class="token punctuation">]</span>
     <span class="token punctuation">}</span>
   <span class="token punctuation">}</span>
 <span class="token punctuation">}</span>
 </code></pre>
-<p>A <em>consumer</em> implementing the <code>kyc-handoff</code> <em>Trust Task specification</em> interprets the extended <code>code</code> per that specification’s declarations (see <a href="#specification-requirements">Specification Requirements</a>, item 9). A <em>consumer</em> that does not implement <code>kyc-handoff</code> treats the error as if <code>code = taskFailed</code>, retains <code>retryable = false</code>, and ignores the contents of <code>details</code>.</p>
+<p>A <em>consumer</em> implementing the <code>acl/change-role</code> <em>Trust Task specification</em> interprets the extended <code>code</code> per that specification’s declarations (see <a href="#specification-requirements">Specification Requirements</a>, item 9). A <em>consumer</em> that does not implement <code>acl/change-role</code> treats the error as if <code>code = taskFailed</code>, retains <code>retryable = false</code>, and ignores the contents of <code>details</code>.</p>
 </blockquote>
 <h3 id="reserved-response-type-slugs" tabindex="-1"><a class="toc-anchor d-print-none" href="#reserved-response-type-slugs">§</a> Reserved Response-Type Slugs</h3>
 <p>The framework reserves the following additional response-type <em>Trust Task specification</em> slugs. These slugs <strong>MUST NOT</strong> be used for any individual <em>Trust Task specification</em> registered under <a href="#type-uri">Type URI</a>.</p>
@@ -1782,7 +1790,7 @@ https://internal.example/spec/&lt;slug&gt;/&lt;MAJOR.MINOR&gt;
 <h3 id="discovery-request" tabindex="-1"><a class="toc-anchor d-print-none" href="#discovery-request">§</a> Discovery Request</h3>
 <p>A <em>discovery request</em> is a <a class="term-reference" href="#term:trust-task-document">Trust Task document</a> whose <code>type</code> is <code>https://trusttasks.org/spec/trust-task-discovery/0.1</code>. Its <code>payload</code> carries an optional list of slug-glob patterns:</p>
 <pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
-  <span class="token property">"patterns"</span><span class="token operator">:</span> <span class="token punctuation">[</span><span class="token string">"acl/*"</span><span class="token punctuation">,</span> <span class="token string">"kyc-handoff"</span><span class="token punctuation">]</span>
+  <span class="token property">"patterns"</span><span class="token operator">:</span> <span class="token punctuation">[</span><span class="token string">"acl/*"</span><span class="token punctuation">,</span> <span class="token string">"consent/request"</span><span class="token punctuation">]</span>
 <span class="token punctuation">}</span>
 </code></pre>
 <p>When <code>patterns</code> is absent or empty, the <em>responder</em> treats the query as <code>["*"]</code> — return every supported <em>Trust Task</em>.</p>
@@ -1802,7 +1810,7 @@ https://internal.example/spec/&lt;slug&gt;/&lt;MAJOR.MINOR&gt;
   <span class="token property">"supportedTypes"</span><span class="token operator">:</span> <span class="token punctuation">[</span>
     <span class="token string">"https://trusttasks.org/spec/acl/grant/0.1"</span><span class="token punctuation">,</span>
     <span class="token string">"https://trusttasks.org/spec/acl/revoke/0.1"</span><span class="token punctuation">,</span>
-    <span class="token string">"https://trusttasks.org/spec/kyc-handoff/1.0"</span>
+    <span class="token string">"https://trusttasks.org/spec/consent/request/1.0"</span>
   <span class="token punctuation">]</span>
 <span class="token punctuation">}</span>
 </code></pre>
@@ -1965,7 +1973,7 @@ https://internal.example/spec/&lt;slug&gt;/&lt;MAJOR.MINOR&gt;
 <h2 id="appendices" tabindex="-1"><a class="toc-anchor d-print-none" href="#appendices">§</a> Appendices</h2>
 <h3 id="appendix-a%3A-example-trust-task-specification" tabindex="-1"><a class="toc-anchor d-print-none" href="#appendix-a%3A-example-trust-task-specification">§</a> Appendix A: Example Trust Task Specification</h3>
 <p><em>This appendix is informative.</em></p>
-<p>This appendix shows the elements an individual <a class="term-reference" href="#term:trust-task-specification">Trust Task specification</a> declares in order to satisfy <a href="#specification-requirements">Specification Requirements</a>. The example below is illustrative; the slug <code>kyc-handoff</code> and its contents are used purely for demonstration and are not a reference to any actual specification registered under <a href="#type-uri">Type URI</a>.</p>
+<p>This appendix shows the elements an individual <a class="term-reference" href="#term:trust-task-specification">Trust Task specification</a> declares in order to satisfy <a href="#specification-requirements">Specification Requirements</a>. The declarations below are reproduced from the registered <code>acl/change-role</code> 0.1 specification, so every element has a live counterpart that can be dereferenced; that registry entry, not this appendix, is normative for the task itself.</p>
 <h4 id="front-matter" tabindex="-1"><a class="toc-anchor d-print-none" href="#front-matter">§</a> Front Matter</h4>
 <div class="table-responsive-md"><table class="table table-striped table-bordered table-hover">
 <thead>
@@ -1977,19 +1985,19 @@ https://internal.example/spec/&lt;slug&gt;/&lt;MAJOR.MINOR&gt;
 <tbody>
 <tr>
 <td>Slug</td>
-<td><code>kyc-handoff</code></td>
+<td><code>acl/change-role</code></td>
 </tr>
 <tr>
 <td>Version</td>
-<td><code>1.0</code></td>
+<td><code>0.1</code></td>
 </tr>
 <tr>
 <td><a class="term-reference" href="#term:type-uri">Type URI</a></td>
-<td><code>https://trusttasks.org/spec/kyc-handoff/1.0</code></td>
+<td><code>https://trusttasks.org/spec/acl/change-role/0.1</code></td>
 </tr>
 <tr>
 <td>Target framework version</td>
-<td><code>0.1.0</code></td>
+<td><code>0.5.0</code></td>
 </tr>
 <tr>
 <td>Maturity level</td>
@@ -1997,19 +2005,35 @@ https://internal.example/spec/&lt;slug&gt;/&lt;MAJOR.MINOR&gt;
 </tr>
 <tr>
 <td><code>issuer</code> party</td>
-<td>The KYC verifier. <strong>REQUIRED</strong>. Accepted <a class="term-reference" href="#term:vid">VID</a> schemes: <code>did:web</code>, <code>did:key</code>, <code>x509</code>.</td>
+<td>The changing authority. <strong>REQUIRED</strong>. No <a class="term-reference" href="#term:vid">VID</a> scheme restriction is declared.</td>
 </tr>
 <tr>
 <td><code>recipient</code> party</td>
-<td>The relying party (typically a bank). <strong>REQUIRED</strong>. Accepted <em>VID</em> schemes: <code>did:web</code>, <code>x509</code>.</td>
+<td>The ACL maintainer. <strong>REQUIRED</strong>. No <em>VID</em> scheme restriction is declared.</td>
 </tr>
 <tr>
 <td>Outcome</td>
-<td>The <em>issuer</em> attests to the <em>recipient</em> the result and assurance level of a KYC verification performed against an identified subject.</td>
+<td>The <em>issuer</em> records to the <em>recipient</em> the transition of a subject’s role within an access-control list, subject to an optimistic concurrency check against the subject’s prior role.</td>
 </tr>
 <tr>
 <td>Proof requirement</td>
-<td><strong>REQUIRED</strong>. Rationale: the recipient retains the verification result for compliance reporting and may rely upon it after delivery; a transport-bound integrity guarantee alone is insufficient (see <a href="#when-to-include-a-proof">When to Include a Proof</a>).</td>
+<td><strong>REQUIRED</strong>. Rationale: role changes are the highest-impact ACL operation — a promotion extends privilege, a demotion withdraws it — so a non-repudiable, transport-independent record is necessary for audit, dispute resolution, and downstream parties that retained the prior grant (see <a href="#when-to-include-a-proof">When to Include a Proof</a>).</td>
+</tr>
+<tr>
+<td><code>issuedAt</code> requirement</td>
+<td><strong>REQUIRED</strong>. Rationale: a role change overwrites the entry rather than incrementing it, so a stale copy applied out of order silently reinstates a role an operator has already moved the subject off; the issue time is what lets the maintainer order two changes to the same entry and refuse the older one.</td>
+</tr>
+<tr>
+<td>Side effects</td>
+<td><code>mutating</code> — reassigns a subject’s role in the ACL; recoverable by changing it back.</td>
+</tr>
+<tr>
+<td>Exposure</td>
+<td><code>discloses: none</code>. The specification does not act as the subject.</td>
+</tr>
+<tr>
+<td>Subject path</td>
+<td><code>/subject</code></td>
 </tr>
 <tr>
 <td>JSON-LD <code>@context</code></td>
@@ -2018,25 +2042,57 @@ https://internal.example/spec/&lt;slug&gt;/&lt;MAJOR.MINOR&gt;
 </tbody>
 </table>
 </div><h4 id="payload-json-schema" tabindex="-1"><a class="toc-anchor d-print-none" href="#payload-json-schema">§</a> Payload JSON Schema</h4>
-<p>Served at the <em>Type URI</em> under content negotiation for <code>application/schema+json</code>:</p>
+<p>Served at the <em>Type URI</em> under content negotiation for <code>application/schema+json</code>. The <code>$defs.Response</code> sub-schema is the payload of the <code>#response</code> variant defined in <a href="#request-and-response-variants">Request and Response Variants</a>; <code>$ref</code> values are relative to the schema’s own position in the registry.</p>
 <pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
-  <span class="token property">"$id"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/kyc-handoff/1.0"</span><span class="token punctuation">,</span>
   <span class="token property">"$schema"</span><span class="token operator">:</span> <span class="token string">"https://json-schema.org/draft/2020-12/schema"</span><span class="token punctuation">,</span>
+  <span class="token property">"$id"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/acl/change-role/0.1"</span><span class="token punctuation">,</span>
+  <span class="token property">"title"</span><span class="token operator">:</span> <span class="token string">"ACL Change Role — payload"</span><span class="token punctuation">,</span>
   <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"object"</span><span class="token punctuation">,</span>
   <span class="token property">"additionalProperties"</span><span class="token operator">:</span> <span class="token boolean">false</span><span class="token punctuation">,</span>
-  <span class="token property">"required"</span><span class="token operator">:</span> <span class="token punctuation">[</span><span class="token string">"subject"</span><span class="token punctuation">,</span> <span class="token string">"result"</span><span class="token punctuation">,</span> <span class="token string">"level"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+  <span class="token property">"required"</span><span class="token operator">:</span> <span class="token punctuation">[</span><span class="token string">"subject"</span><span class="token punctuation">,</span> <span class="token string">"fromRole"</span><span class="token punctuation">,</span> <span class="token string">"toRole"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
   <span class="token property">"properties"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
     <span class="token property">"subject"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
       <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"string"</span><span class="token punctuation">,</span>
-      <span class="token property">"description"</span><span class="token operator">:</span> <span class="token string">"Verifiable Identifier of the verified subject."</span>
+      <span class="token property">"description"</span><span class="token operator">:</span> <span class="token string">"VID of the party whose role is changing."</span>
     <span class="token punctuation">}</span><span class="token punctuation">,</span>
-    <span class="token property">"result"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+    <span class="token property">"fromRole"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
       <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"string"</span><span class="token punctuation">,</span>
-      <span class="token property">"enum"</span><span class="token operator">:</span> <span class="token punctuation">[</span><span class="token string">"passed"</span><span class="token punctuation">,</span> <span class="token string">"failed"</span><span class="token punctuation">]</span>
+      <span class="token property">"minLength"</span><span class="token operator">:</span> <span class="token number">1</span><span class="token punctuation">,</span>
+      <span class="token property">"description"</span><span class="token operator">:</span> <span class="token string">"The subject's prior role. Used by the maintainer for the optimistic concurrency check."</span>
     <span class="token punctuation">}</span><span class="token punctuation">,</span>
-    <span class="token property">"level"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+    <span class="token property">"toRole"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
       <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"string"</span><span class="token punctuation">,</span>
-      <span class="token property">"enum"</span><span class="token operator">:</span> <span class="token punctuation">[</span><span class="token string">"LOA1"</span><span class="token punctuation">,</span> <span class="token string">"LOA2"</span><span class="token punctuation">,</span> <span class="token string">"LOA3"</span><span class="token punctuation">]</span>
+      <span class="token property">"minLength"</span><span class="token operator">:</span> <span class="token number">1</span><span class="token punctuation">,</span>
+      <span class="token property">"description"</span><span class="token operator">:</span> <span class="token string">"The role to transition the subject to."</span>
+    <span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token property">"reason"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+      <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"string"</span><span class="token punctuation">,</span>
+      <span class="token property">"maxLength"</span><span class="token operator">:</span> <span class="token number">1024</span><span class="token punctuation">,</span>
+      <span class="token property">"description"</span><span class="token operator">:</span> <span class="token string">"Optional human-readable rationale."</span>
+    <span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token property">"ext"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+      <span class="token property">"$ref"</span><span class="token operator">:</span> <span class="token string">"../../../_framework/0.1/framework.schema.json#/$defs/Ext"</span><span class="token punctuation">,</span>
+      <span class="token property">"description"</span><span class="token operator">:</span> <span class="token string">"Ecosystem-defined extension members per SPEC.md §4.5.1."</span>
+    <span class="token punctuation">}</span>
+  <span class="token punctuation">}</span><span class="token punctuation">,</span>
+  <span class="token property">"$defs"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+    <span class="token property">"Response"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+      <span class="token property">"$anchor"</span><span class="token operator">:</span> <span class="token string">"response"</span><span class="token punctuation">,</span>
+      <span class="token property">"title"</span><span class="token operator">:</span> <span class="token string">"ACL Change Role — response payload"</span><span class="token punctuation">,</span>
+      <span class="token property">"description"</span><span class="token operator">:</span> <span class="token string">"The success response to an acl/change-role request. Carried in a Trust Task document whose type is https://trusttasks.org/spec/acl/change-role/0.1#response."</span><span class="token punctuation">,</span>
+      <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"object"</span><span class="token punctuation">,</span>
+      <span class="token property">"additionalProperties"</span><span class="token operator">:</span> <span class="token boolean">false</span><span class="token punctuation">,</span>
+      <span class="token property">"required"</span><span class="token operator">:</span> <span class="token punctuation">[</span><span class="token string">"entry"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
+      <span class="token property">"properties"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+        <span class="token property">"entry"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+          <span class="token property">"description"</span><span class="token operator">:</span> <span class="token string">"The AclEntry the maintainer now holds for the subject. entry.role MUST equal the request's payload.toRole."</span><span class="token punctuation">,</span>
+          <span class="token property">"$ref"</span><span class="token operator">:</span> <span class="token string">"../../_shared/0.1/acl-entry.schema.json#/$defs/AclEntry"</span>
+        <span class="token punctuation">}</span><span class="token punctuation">,</span>
+        <span class="token property">"ext"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+          <span class="token property">"$ref"</span><span class="token operator">:</span> <span class="token string">"../../../_framework/0.1/framework.schema.json#/$defs/Ext"</span><span class="token punctuation">,</span>
+          <span class="token property">"description"</span><span class="token operator">:</span> <span class="token string">"Ecosystem-defined extension members per SPEC.md §4.5.1."</span>
+        <span class="token punctuation">}</span>
+      <span class="token punctuation">}</span>
     <span class="token punctuation">}</span>
   <span class="token punctuation">}</span>
 <span class="token punctuation">}</span>
@@ -2053,53 +2109,62 @@ https://internal.example/spec/&lt;slug&gt;/&lt;MAJOR.MINOR&gt;
 </thead>
 <tbody>
 <tr>
-<td><code>kyc-handoff:documentRevoked</code></td>
-<td>A breeder document used in the verification was revoked by its issuing authority after the verification completed.</td>
+<td><code>acl/change-role:roleNotRecognized</code></td>
+<td>The <code>fromRole</code> or <code>toRole</code> string is not part of the ACL maintainer’s role vocabulary.</td>
 <td><code>false</code></td>
-<td><code>{ "documentRef": &lt;string&gt;, "revokedAt": &lt;RFC3339 date-time&gt; }</code></td>
+<td><code>{ "offendingRole": &lt;string&gt;, "knownRoles": &lt;array of string&gt; }</code></td>
+</tr>
+<tr>
+<td><code>acl/change-role:stateMismatch</code></td>
+<td>The subject’s current role does not match <code>payload.fromRole</code>; the change was based on stale state.</td>
+<td><code>true</code></td>
+<td><code>{ "currentRole": &lt;string&gt; }</code></td>
 </tr>
 </tbody>
 </table>
-</div><p>The <code>details</code> JSON Schema fragment for this code is:</p>
+</div><p>Both codes are namespaced under the emitting specification’s own slug, per rule 1 of <a href="#extension-by-individual-trust-task-specifications">Extension by Individual Trust Task Specifications</a>. The <code>details</code> JSON Schema fragment for <code>acl/change-role:roleNotRecognized</code> is:</p>
 <pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
   <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"object"</span><span class="token punctuation">,</span>
   <span class="token property">"additionalProperties"</span><span class="token operator">:</span> <span class="token boolean">false</span><span class="token punctuation">,</span>
-  <span class="token property">"required"</span><span class="token operator">:</span> <span class="token punctuation">[</span><span class="token string">"documentRef"</span><span class="token punctuation">]</span><span class="token punctuation">,</span>
   <span class="token property">"properties"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
-    <span class="token property">"documentRef"</span><span class="token operator">:</span> <span class="token punctuation">{</span> <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"string"</span> <span class="token punctuation">}</span><span class="token punctuation">,</span>
-    <span class="token property">"revokedAt"</span><span class="token operator">:</span>   <span class="token punctuation">{</span> <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"string"</span><span class="token punctuation">,</span> <span class="token property">"format"</span><span class="token operator">:</span> <span class="token string">"date-time"</span> <span class="token punctuation">}</span>
+    <span class="token property">"offendingRole"</span><span class="token operator">:</span> <span class="token punctuation">{</span> <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"string"</span> <span class="token punctuation">}</span><span class="token punctuation">,</span>
+    <span class="token property">"knownRoles"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
+      <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"array"</span><span class="token punctuation">,</span>
+      <span class="token property">"items"</span><span class="token operator">:</span> <span class="token punctuation">{</span> <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"string"</span> <span class="token punctuation">}</span>
+    <span class="token punctuation">}</span>
   <span class="token punctuation">}</span>
 <span class="token punctuation">}</span>
 </code></pre>
 <h4 id="an-example-conforming-document" tabindex="-1"><a class="toc-anchor d-print-none" href="#an-example-conforming-document">§</a> An Example Conforming Document</h4>
 <pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
-  <span class="token property">"id"</span><span class="token operator">:</span> <span class="token string">"4f3c9e2a-1b81-4d3e-9b51-7a3c89e3d1f2"</span><span class="token punctuation">,</span>
-  <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/kyc-handoff/1.0"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:verifier.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:bank.example"</span><span class="token punctuation">,</span>
-  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-04-12T09:31:00Z"</span><span class="token punctuation">,</span>
-  <span class="token property">"expiresAt"</span><span class="token operator">:</span> <span class="token string">"2027-04-12T09:31:00Z"</span><span class="token punctuation">,</span>
+  <span class="token property">"id"</span><span class="token operator">:</span> <span class="token string">"1b3c5e2a-1b81-4d3e-9b51-7a3c89e3d1f2"</span><span class="token punctuation">,</span>
+  <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"https://trusttasks.org/spec/acl/change-role/0.1"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuer"</span><span class="token operator">:</span> <span class="token string">"did:web:org.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"recipient"</span><span class="token operator">:</span> <span class="token string">"did:web:maintainer.example"</span><span class="token punctuation">,</span>
+  <span class="token property">"issuedAt"</span><span class="token operator">:</span> <span class="token string">"2026-06-10T14:00:00Z"</span><span class="token punctuation">,</span>
   <span class="token property">"payload"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
-    <span class="token property">"subject"</span><span class="token operator">:</span> <span class="token string">"did:key:z6Mk..."</span><span class="token punctuation">,</span>
-    <span class="token property">"result"</span><span class="token operator">:</span> <span class="token string">"passed"</span><span class="token punctuation">,</span>
-    <span class="token property">"level"</span><span class="token operator">:</span> <span class="token string">"LOA2"</span>
+    <span class="token property">"subject"</span><span class="token operator">:</span> <span class="token string">"did:web:bob.example"</span><span class="token punctuation">,</span>
+    <span class="token property">"fromRole"</span><span class="token operator">:</span> <span class="token string">"member"</span><span class="token punctuation">,</span>
+    <span class="token property">"toRole"</span><span class="token operator">:</span> <span class="token string">"moderator"</span><span class="token punctuation">,</span>
+    <span class="token property">"reason"</span><span class="token operator">:</span> <span class="token string">"Promoted after six months of community contributions."</span>
   <span class="token punctuation">}</span><span class="token punctuation">,</span>
   <span class="token property">"proof"</span><span class="token operator">:</span> <span class="token punctuation">{</span>
     <span class="token property">"type"</span><span class="token operator">:</span> <span class="token string">"DataIntegrityProof"</span><span class="token punctuation">,</span>
     <span class="token property">"cryptosuite"</span><span class="token operator">:</span> <span class="token string">"eddsa-rdfc-2022"</span><span class="token punctuation">,</span>
-    <span class="token property">"verificationMethod"</span><span class="token operator">:</span> <span class="token string">"did:web:verifier.example#key-1"</span><span class="token punctuation">,</span>
-    <span class="token property">"created"</span><span class="token operator">:</span> <span class="token string">"2026-04-12T09:31:00Z"</span><span class="token punctuation">,</span>
+    <span class="token property">"verificationMethod"</span><span class="token operator">:</span> <span class="token string">"did:web:org.example#key-1"</span><span class="token punctuation">,</span>
+    <span class="token property">"created"</span><span class="token operator">:</span> <span class="token string">"2026-06-10T14:00:00Z"</span><span class="token punctuation">,</span>
     <span class="token property">"proofPurpose"</span><span class="token operator">:</span> <span class="token string">"assertionMethod"</span><span class="token punctuation">,</span>
-    <span class="token property">"proofValue"</span><span class="token operator">:</span> <span class="token string">"z3kg..."</span>
+    <span class="token property">"proofValue"</span><span class="token operator">:</span> <span class="token string">"z5xy..."</span>
   <span class="token punctuation">}</span>
 <span class="token punctuation">}</span>
 </code></pre>
 <p>This document carries a <code>proof</code> member because the specification declares <code>proof</code> as <strong>REQUIRED</strong> in <a href="#front-matter">Front Matter</a>. A <a class="term-reference" href="#term:consumer">consumer</a>:</p>
 <ol>
-<li>Resolves the document’s <code>type</code> URI to learn the <em>target framework version</em> (<code>0.1.0</code>) and fetches the framework schema at <code>https://trusttasks.org/spec/trust-task/0.1.0</code>. The outer document structure is validated against it.</li>
+<li>Resolves the document’s <code>type</code> URI to learn the <em>target framework version</em> (<code>0.5.0</code>) and fetches the framework schema at <code>https://trusttasks.org/spec/trust-task/0.5.0</code>. The outer document structure is validated against it.</li>
 <li>Fetches the payload schema at the same <code>type</code> URI under content negotiation for <code>application/schema+json</code>. The <code>payload</code> is validated against it.</li>
 <li>Verifies the <code>proof</code> per <a href="#proof">Proof</a> against the <em>VID</em> in <code>issuer</code>.</li>
-<li>Confirms <code>expiresAt</code> is in the future and <code>recipient</code> matches the consumer’s own <em>VID</em>.</li>
+<li>Confirms <code>recipient</code> matches the consumer’s own <em>VID</em>, and that <code>issuedAt</code> does not lie in the consumer’s own future beyond its skew tolerance. This document declares no <code>expiresAt</code>; where one is present it is checked here too.</li>
+<li>Applies the checks the specification adds on top of the framework’s — for <code>acl/change-role</code>, that the subject’s current role equals <code>payload.fromRole</code>, failing which the <em>consumer</em> answers <code>acl/change-role:stateMismatch</code>. The framework knows nothing of this check; it is the part <a href="#specification-requirements">Specification Requirements</a> obliges each specification to state for itself.</li>
 </ol>
 <p>If any step fails, the <em>consumer</em> returns an <a class="term-reference" href="#term:error-response">error response</a> per <a href="#error-responses">Error Responses</a>.</p>
 <h3 id="appendix-b%3A-changelog" tabindex="-1"><a class="toc-anchor d-print-none" href="#appendix-b%3A-changelog">§</a> Appendix B: Changelog</h3>
@@ -2358,15 +2423,15 @@ This work is licensed under a Creative Commons Attribution 4.0 International Lic
                 </div>
             </div>
             <hr id="external-ref-changes-divider" style="display: none;">
-            <p class="d-none ps-3 pe-3" id="w3c-state">W3C Recommendation, 04 September 2026</p>
+            <p class="d-none ps-3 pe-3" id="w3c-state">W3C Recommendation, 05 September 2026</p>
             <!-- Build Information Section -->
             <div class="ps-3 pe-3">
                 <p class="mb-2 fw-bold">Build Information:</p>
                 <div id="build-info" class="small text-muted">
                     <div class="d-flex align-items-center mb-1">
                         <i class="bi bi-calendar-event me-2" aria-hidden="true"></i>
-                        <time class="timestamp" datetime="2026-09-04T20:06:15.723Z">
-                            Generated: 2026-09-04T20:06:15.723Z
+                        <time class="timestamp" datetime="2026-09-05T14:35:12.807Z">
+                            Generated: 2026-09-05T14:35:12.807Z
                         </time>
                     </div>
                     <div class="d-flex align-items-center mb-1">
