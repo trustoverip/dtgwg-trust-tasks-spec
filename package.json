@@ -4,7 +4,7 @@
   "license": "Apache-2.0",
   "description": "Quick setup for a specification with the Spec-Up-T tool.",
   "dependencies": {
-    "dotenv": "^16.4.5",
+    "dotenv": "^17.4.2",
     "spec-up-t": "^1.9.0"
   },
   "scripts": {
