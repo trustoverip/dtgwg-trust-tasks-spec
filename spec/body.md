@@ -504,6 +504,8 @@ nonzero    = %x31-39                 ; "1".."9"
 
 #### Versioning of This Framework Specification
 
+This framework specification's `_Version:_` header field states the version that a wider ratifying body confirms when this framework reaches Working Group Approved Deliverable or ToIP Approved Deliverable status; it is currently `1.0` and not yet ratified. The `MAJOR.MINOR.PATCH` number described in the remainder of this section — the one embedded in this framework's *Type URI*, in every *target framework version* declaration, and in the changelog of [Appendix B](#appendix-b-changelog) — is carried instead in the header's `_Document Status:_` field, as `Working Draft MAJOR.MINOR.PATCH`, and is what a *specification* or *consumer* actually targets and resolves against.
+
 This framework specification is itself versioned under [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html), as `MAJOR.MINOR.PATCH`. A `MAJOR` increment marks a change that is breaking for *consumers* implementing this framework or for the specification-authoring contract of [Specification Requirements](#specification-requirements); a `MINOR` increment marks a backwards-compatible addition, such as a new optional document member or a new reserved slug; a `PATCH` increment marks a correction — errata, clarified prose, a repaired example — that changes neither the wire format nor what a conforming *Trust Task specification* must declare. The grammar extends the production above:
 
 ```abnf
