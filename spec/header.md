@@ -1,8 +1,9 @@
 # Trust Tasks
 
-_Version:_ 0.5.0  
-_Document Status:_ Working Draft  
+_Version:_ 1.0  
+_Document Status:_ Working Draft 0.5.0  
 _Last Updated:_ 2026-08-26  
+_GitHub:_ <https://github.com/trustoverip/dtgwg-trust-tasks-spec>
 <!-- _DOI:_ To be assigned when this specification reaches ToIP Approved Deliverable status. See https://lf-toip.atlassian.net/wiki/spaces/HOME/pages/767787009/ToIP+Approved+Deliverable+Process#Persistent-DOI-Link -->
 
 _Editors:_
@@ -15,7 +16,7 @@ _Contributors:_
 
 **Abstract**
 
-This document defines the **Trust Tasks** framework: a specification for the verifiable work that occurs between two or more parties. A Trust Task is a self-contained, transport-agnostic, JSON-based description of an outcome that two parties agree to achieve. This framework specification defines the document structure, version scheme, namespace, and conformance requirements that every individual Trust Task specification — published under the registry at `https://trusttasks.org/` — is expected to satisfy. Individual Trust Task specifications (for example, the `kyc-handoff` specification at `https://trusttasks.org/spec/kyc-handoff/1.0`) are conforming refinements of this framework.
+This document defines the **Trust Tasks** framework: a specification for the verifiable work that occurs between two or more parties. A Trust Task is a self-contained, transport-agnostic, JSON-based description of an outcome that two parties agree to achieve. This framework specification defines the document structure, version scheme, namespace, and conformance requirements that every individual Trust Task specification — published under the registry at `https://trusttasks.org/` — is expected to satisfy. Individual Trust Task specifications (for example, the `acl/change-role` specification at `https://trusttasks.org/spec/acl/change-role/0.1`) are conforming refinements of this framework.
 
 **Intellectual Property Rights**
 

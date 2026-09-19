@@ -1,36 +1,56 @@
 version: 2
 
 updates:
-  # Keep GitHub Actions pinned to SHAs, but let Dependabot bump the SHA
-  # (and the trailing "# vX.Y.Z" comment) when a new release ships.
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: weekly
-    commit-message:
-      prefix: "ci"
-      include: scope
-    groups:
-      github-actions:
-        patterns:
-          - "*"
-
-  # npm dependencies, including the transitive packages that show up in
-  # package-lock.json security alerts.
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 10
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
     commit-message:
-      prefix: "build"
+      prefix: npm
       include: scope
     groups:
-      npm-production:
-        dependency-type: production
+      npm-security:
+        applies-to: security-updates
         patterns:
           - "*"
+      npm-production:
+        applies-to: version-updates
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
       npm-development:
+        applies-to: version-updates
         dependency-type: development
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: actions
+    groups:
+      actions-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+      actions-all:
+        applies-to: version-updates
         patterns:
           - "*"

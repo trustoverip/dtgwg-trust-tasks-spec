@@ -4,46 +4,82 @@
 
 *This appendix is informative.*
 
-This appendix shows the elements an individual [[ref: Trust Task specification]] declares in order to satisfy [Specification Requirements](#specification-requirements). The example below is illustrative; the slug `kyc-handoff` and its contents are used purely for demonstration and are not a reference to any actual specification registered under [Type URI](#type-uri).
+This appendix shows the elements an individual [[ref: Trust Task specification]] declares in order to satisfy [Specification Requirements](#specification-requirements). The declarations below are reproduced from the registered `acl/change-role` 0.1 specification, so every element has a live counterpart that can be dereferenced; that registry entry, not this appendix, is normative for the task itself.
 
 #### Front Matter
 
 | Declaration | Value |
 |---|---|
-| Slug | `kyc-handoff` |
-| Version | `1.0` |
-| [[ref: Type URI]] | `https://trusttasks.org/spec/kyc-handoff/1.0` |
-| Target framework version | `0.1.0` |
+| Slug | `acl/change-role` |
+| Version | `0.1` |
+| [[ref: Type URI]] | `https://trusttasks.org/spec/acl/change-role/0.1` |
+| Target framework version | `0.5.0` |
 | Maturity level | `draft` |
-| `issuer` party | The KYC verifier. **REQUIRED**. Accepted [[ref: VID]] schemes: `did:web`, `did:key`, `x509`. |
-| `recipient` party | The relying party (typically a bank). **REQUIRED**. Accepted *VID* schemes: `did:web`, `x509`. |
-| Outcome | The *issuer* attests to the *recipient* the result and assurance level of a KYC verification performed against an identified subject. |
-| Proof requirement | **REQUIRED**. Rationale: the recipient retains the verification result for compliance reporting and may rely upon it after delivery; a transport-bound integrity guarantee alone is insufficient (see [When to Include a Proof](#when-to-include-a-proof)). |
+| `issuer` party | The changing authority. **REQUIRED**. No [[ref: VID]] scheme restriction is declared. |
+| `recipient` party | The ACL maintainer. **REQUIRED**. No *VID* scheme restriction is declared. |
+| Outcome | The *issuer* records to the *recipient* the transition of a subject's role within an access-control list, subject to an optimistic concurrency check against the subject's prior role. |
+| Proof requirement | **REQUIRED**. Rationale: role changes are the highest-impact ACL operation — a promotion extends privilege, a demotion withdraws it — so a non-repudiable, transport-independent record is necessary for audit, dispute resolution, and downstream parties that retained the prior grant (see [When to Include a Proof](#when-to-include-a-proof)). |
+| `issuedAt` requirement | **REQUIRED**. Rationale: a role change overwrites the entry rather than incrementing it, so a stale copy applied out of order silently reinstates a role an operator has already moved the subject off; the issue time is what lets the maintainer order two changes to the same entry and refuse the older one. |
+| Side effects | `mutating` — reassigns a subject's role in the ACL; recoverable by changing it back. |
+| Exposure | `discloses: none`. The specification does not act as the subject. |
+| Subject path | `/subject` |
 | JSON-LD `@context` | Not published at this version. |
 
 #### Payload JSON Schema
 
-Served at the *Type URI* under content negotiation for `application/schema+json`:
+Served at the *Type URI* under content negotiation for `application/schema+json`. The `$defs.Response` sub-schema is the payload of the `#response` variant defined in [Request and Response Variants](#request-and-response-variants); `$ref` values are relative to the schema's own position in the registry.
 
 ```json
 {
-  "$id": "https://trusttasks.org/spec/kyc-handoff/1.0",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://trusttasks.org/spec/acl/change-role/0.1",
+  "title": "ACL Change Role — payload",
   "type": "object",
   "additionalProperties": false,
-  "required": ["subject", "result", "level"],
+  "required": ["subject", "fromRole", "toRole"],
   "properties": {
     "subject": {
       "type": "string",
-      "description": "Verifiable Identifier of the verified subject."
+      "description": "VID of the party whose role is changing."
     },
-    "result": {
+    "fromRole": {
       "type": "string",
-      "enum": ["passed", "failed"]
+      "minLength": 1,
+      "description": "The subject's prior role. Used by the maintainer for the optimistic concurrency check."
     },
-    "level": {
+    "toRole": {
       "type": "string",
-      "enum": ["LOA1", "LOA2", "LOA3"]
+      "minLength": 1,
+      "description": "The role to transition the subject to."
+    },
+    "reason": {
+      "type": "string",
+      "maxLength": 1024,
+      "description": "Optional human-readable rationale."
+    },
+    "ext": {
+      "$ref": "../../../_framework/0.1/framework.schema.json#/$defs/Ext",
+      "description": "Ecosystem-defined extension members per SPEC.md §4.5.1."
+    }
+  },
+  "$defs": {
+    "Response": {
+      "$anchor": "response",
+      "title": "ACL Change Role — response payload",
+      "description": "The success response to an acl/change-role request. Carried in a Trust Task document whose type is https://trusttasks.org/spec/acl/change-role/0.1#response.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entry"],
+      "properties": {
+        "entry": {
+          "description": "The AclEntry the maintainer now holds for the subject. entry.role MUST equal the request's payload.toRole.",
+          "$ref": "../../_shared/0.1/acl-entry.schema.json#/$defs/AclEntry"
+        },
+        "ext": {
+          "$ref": "../../../_framework/0.1/framework.schema.json#/$defs/Ext",
+          "description": "Ecosystem-defined extension members per SPEC.md §4.5.1."
+        }
+      }
     }
   }
 }
@@ -53,18 +89,21 @@ Served at the *Type URI* under content negotiation for `application/schema+json`
 
 | Code | Meaning | Default `retryable` | `details` shape |
 |---|---|---|---|
-| `kyc-handoff:documentRevoked` | A breeder document used in the verification was revoked by its issuing authority after the verification completed. | `false` | `{ "documentRef": <string>, "revokedAt": <RFC3339 date-time> }` |
+| `acl/change-role:roleNotRecognized` | The `fromRole` or `toRole` string is not part of the ACL maintainer's role vocabulary. | `false` | `{ "offendingRole": <string>, "knownRoles": <array of string> }` |
+| `acl/change-role:stateMismatch` | The subject's current role does not match `payload.fromRole`; the change was based on stale state. | `true` | `{ "currentRole": <string> }` |
 
-The `details` JSON Schema fragment for this code is:
+Both codes are namespaced under the emitting specification's own slug, per rule 1 of [Extension by Individual Trust Task Specifications](#extension-by-individual-trust-task-specifications). The `details` JSON Schema fragment for `acl/change-role:roleNotRecognized` is:
 
 ```json
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["documentRef"],
   "properties": {
-    "documentRef": { "type": "string" },
-    "revokedAt":   { "type": "string", "format": "date-time" }
+    "offendingRole": { "type": "string" },
+    "knownRoles": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
   }
 }
 ```
@@ -73,34 +112,35 @@ The `details` JSON Schema fragment for this code is:
 
 ```json
 {
-  "id": "4f3c9e2a-1b81-4d3e-9b51-7a3c89e3d1f2",
-  "type": "https://trusttasks.org/spec/kyc-handoff/1.0",
-  "issuer": "did:web:verifier.example",
-  "recipient": "did:web:bank.example",
-  "issuedAt": "2026-04-12T09:31:00Z",
-  "expiresAt": "2027-04-12T09:31:00Z",
+  "id": "1b3c5e2a-1b81-4d3e-9b51-7a3c89e3d1f2",
+  "type": "https://trusttasks.org/spec/acl/change-role/0.1",
+  "issuer": "did:web:org.example",
+  "recipient": "did:web:maintainer.example",
+  "issuedAt": "2026-06-10T14:00:00Z",
   "payload": {
-    "subject": "did:key:z6Mk...",
-    "result": "passed",
-    "level": "LOA2"
+    "subject": "did:web:bob.example",
+    "fromRole": "member",
+    "toRole": "moderator",
+    "reason": "Promoted after six months of community contributions."
   },
   "proof": {
     "type": "DataIntegrityProof",
     "cryptosuite": "eddsa-rdfc-2022",
-    "verificationMethod": "did:web:verifier.example#key-1",
-    "created": "2026-04-12T09:31:00Z",
+    "verificationMethod": "did:web:org.example#key-1",
+    "created": "2026-06-10T14:00:00Z",
     "proofPurpose": "assertionMethod",
-    "proofValue": "z3kg..."
+    "proofValue": "z5xy..."
   }
 }
 ```
 
 This document carries a `proof` member because the specification declares `proof` as **REQUIRED** in [Front Matter](#front-matter). A [[ref: consumer]]:
 
-1. Resolves the document's `type` URI to learn the *target framework version* (`0.1.0`) and fetches the framework schema at `https://trusttasks.org/spec/trust-task/0.1.0`. The outer document structure is validated against it.
+1. Resolves the document's `type` URI to learn the *target framework version* (`0.5.0`) and fetches the framework schema at `https://trusttasks.org/spec/trust-task/0.5.0`. The outer document structure is validated against it.
 2. Fetches the payload schema at the same `type` URI under content negotiation for `application/schema+json`. The `payload` is validated against it.
 3. Verifies the `proof` per [Proof](#proof) against the *VID* in `issuer`.
-4. Confirms `expiresAt` is in the future and `recipient` matches the consumer's own *VID*.
+4. Confirms `recipient` matches the consumer's own *VID*, and that `issuedAt` does not lie in the consumer's own future beyond its skew tolerance. This document declares no `expiresAt`; where one is present it is checked here too.
+5. Applies the checks the specification adds on top of the framework's — for `acl/change-role`, that the subject's current role equals `payload.fromRole`, failing which the *consumer* answers `acl/change-role:stateMismatch`. The framework knows nothing of this check; it is the part [Specification Requirements](#specification-requirements) obliges each specification to state for itself.
 
 If any step fails, the *consumer* returns an [[ref: error response]] per [Error Responses](#error-responses).
 
