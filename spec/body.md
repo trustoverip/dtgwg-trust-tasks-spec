@@ -1223,14 +1223,16 @@ Two parties about to enter a [[ref: Trust Task]] exchange often need to negotiat
 The slug `trust-task-discovery` is reserved by [Type URI](#type-uri) under the framework's `trust-task-` namespace. Its current published version lives at:
 
 ```
-https://trusttasks.org/spec/trust-task-discovery/0.1
+https://trusttasks.org/spec/trust-task-discovery/0.2
 ```
 
 Its registry entry defines the full request/response payload schema and conformance requirements. This section gives the framework-level overview; for the normative definitions of `payload.patterns` semantics, response shape, and conformance, see that registry entry.
 
+`trust-task-discovery/0.1` remains published. It differs only in carrying the responder's `frameworkVersion` as `MAJOR.MINOR`, which cannot name a framework release in the three-part form of [Versioning of This Framework Specification](#versioning-of-this-framework-specification); a *responder* answers each version it supports in the version it was asked.
+
 ### Discovery Request
 
-A *discovery request* is a [[ref: Trust Task document]] whose `type` is `https://trusttasks.org/spec/trust-task-discovery/0.1`. Its `payload` carries an optional list of slug-glob patterns:
+A *discovery request* is a [[ref: Trust Task document]] whose `type` is `https://trusttasks.org/spec/trust-task-discovery/0.2`. Its `payload` carries an optional list of slug-glob patterns:
 
 ```json
 {
@@ -1256,7 +1258,7 @@ The grammar omits version filters, recursive globs (`**`), and regex on purpose.
 
 ### Discovery Response
 
-A *discovery response* is a *Trust Task document* whose `type` is `https://trusttasks.org/spec/trust-task-discovery/0.1#response`. Its `payload` carries the matching subset of [[ref: Type URIs]] the responder supports:
+A *discovery response* is a *Trust Task document* whose `type` is `https://trusttasks.org/spec/trust-task-discovery/0.2#response`. Its `payload` carries the matching subset of [[ref: Type URIs]] the responder supports:
 
 ```json
 {
