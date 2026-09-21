@@ -1840,11 +1840,12 @@ https://internal.example/spec/&lt;slug&gt;/&lt;MAJOR.MINOR&gt;
 <p><em>This section is normative.</em></p>
 <p>Two parties about to enter a <a class="term-reference" href="#term:trust-task">Trust Task</a> exchange often need to negotiate a shared task vocabulary first: a <a class="term-reference" href="#term:producer">producer</a> asks “which <a class="term-reference" href="#term:trust-tasks">Trust Tasks</a> are you prepared to act upon?” before committing to send any particular document. The framework supports this with a reserved <a class="term-reference" href="#term:trust-task-specification">Trust Task specification</a> of its own: <code>trust-task-discovery</code>.</p>
 <p>The slug <code>trust-task-discovery</code> is reserved by <a href="#type-uri">Type URI</a> under the framework’s <code>trust-task-</code> namespace. Its current published version lives at:</p>
-<pre><code>https://trusttasks.org/spec/trust-task-discovery/0.1
+<pre><code>https://trusttasks.org/spec/trust-task-discovery/0.2
 </code></pre>
 <p>Its registry entry defines the full request/response payload schema and conformance requirements. This section gives the framework-level overview; for the normative definitions of <code>payload.patterns</code> semantics, response shape, and conformance, see that registry entry.</p>
+<p><code>trust-task-discovery/0.1</code> remains published. It differs only in carrying the responder’s <code>frameworkVersion</code> as <code>MAJOR.MINOR</code>, which cannot name a framework release in the three-part form of <a href="#versioning-of-this-framework-specification">Versioning of This Framework Specification</a>; a <em>responder</em> answers each version it supports in the version it was asked.</p>
 <h3 id="discovery-request" tabindex="-1"><a class="toc-anchor d-print-none" href="#discovery-request">§</a> Discovery Request</h3>
-<p>A <em>discovery request</em> is a <a class="term-reference" href="#term:trust-task-document">Trust Task document</a> whose <code>type</code> is <code>https://trusttasks.org/spec/trust-task-discovery/0.1</code>. Its <code>payload</code> carries an optional list of slug-glob patterns:</p>
+<p>A <em>discovery request</em> is a <a class="term-reference" href="#term:trust-task-document">Trust Task document</a> whose <code>type</code> is <code>https://trusttasks.org/spec/trust-task-discovery/0.2</code>. Its <code>payload</code> carries an optional list of slug-glob patterns:</p>
 <pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
   <span class="token property">"patterns"</span><span class="token operator">:</span> <span class="token punctuation">[</span><span class="token string">"acl/*"</span><span class="token punctuation">,</span> <span class="token string">"consent/request"</span><span class="token punctuation">]</span>
 <span class="token punctuation">}</span>
@@ -1861,7 +1862,7 @@ https://internal.example/spec/&lt;slug&gt;/&lt;MAJOR.MINOR&gt;
 <p>Wildcards in positions other than as the trailing <code>/*</code> of a <code>&lt;prefix&gt;/*</code> pattern are <strong>not</strong> interpreted; they match literally. Multiple patterns combine with <strong>OR</strong> semantics: a slug matches the query if it matches at least one pattern.</p>
 <p>The grammar omits version filters, recursive globs (<code>**</code>), and regex on purpose. Versions are part of the <a class="term-reference" href="#term:type-uri">Type URI</a> the responder returns; a discoverer that needs to filter on version applies the constraint client-side.</p>
 <h3 id="discovery-response" tabindex="-1"><a class="toc-anchor d-print-none" href="#discovery-response">§</a> Discovery Response</h3>
-<p>A <em>discovery response</em> is a <em>Trust Task document</em> whose <code>type</code> is <code>https://trusttasks.org/spec/trust-task-discovery/0.1#response</code>. Its <code>payload</code> carries the matching subset of <a class="term-reference" href="#term:type-uris">Type URIs</a> the responder supports:</p>
+<p>A <em>discovery response</em> is a <em>Trust Task document</em> whose <code>type</code> is <code>https://trusttasks.org/spec/trust-task-discovery/0.2#response</code>. Its <code>payload</code> carries the matching subset of <a class="term-reference" href="#term:type-uris">Type URIs</a> the responder supports:</p>
 <pre class="language-json"><code class="language-json"><span class="token punctuation">{</span>
   <span class="token property">"supportedTypes"</span><span class="token operator">:</span> <span class="token punctuation">[</span>
     <span class="token string">"https://trusttasks.org/spec/acl/grant/0.1"</span><span class="token punctuation">,</span>
@@ -2511,8 +2512,8 @@ This work is licensed under a Creative Commons Attribution 4.0 International Lic
                 <div id="build-info" class="small text-muted">
                     <div class="d-flex align-items-center mb-1">
                         <i class="bi bi-calendar-event me-2" aria-hidden="true"></i>
-                        <time class="timestamp" datetime="2026-09-21T17:19:33.416Z">
-                            Generated: 2026-09-21T17:19:33.416Z
+                        <time class="timestamp" datetime="2026-09-21T20:12:28.495Z">
+                            Generated: 2026-09-21T20:12:28.495Z
                         </time>
                     </div>
                     <div class="d-flex align-items-center mb-1">
