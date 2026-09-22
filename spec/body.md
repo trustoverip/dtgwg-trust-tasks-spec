@@ -624,23 +624,39 @@ When a *Trust Task specification* makes a breaking change — including adopting
 
 *This section is normative.*
 
-The framework defines a single resolvable namespace per versioned [[ref: Trust Task specification]]. One canonical URL serves human-readable prose, machine-readable schemas, and (where defined) JSON-LD contexts, differentiated by HTTP content negotiation.
+The framework defines a single namespace per versioned [[ref: Trust Task specification]]. In the public registry, one canonical URL serves human-readable prose, machine-readable schemas, and (where defined) JSON-LD contexts, differentiated by HTTP content negotiation.
 
 ### Type URI
 
-Every versioned *Trust Task specification* **MUST** be addressable by a [[ref: Type URI]] — a URI in the sense of [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986) — of the form:
+Every versioned *Trust Task specification* **MUST** be addressable by a [[ref: Type URI]] — an absolute URI in the sense of [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986). The canonical, public-registry form is:
 
 ```
 https://trusttasks.org/spec/<slug>/<MAJOR.MINOR>
 ```
 
-The form above is the canonical, public-registry form. [[ref: Trust Task specifications]] intended only for private or internal use — and not published through the public registry — **MAY** use a different authority under the same URI shape; the requirements that apply to those are given in [Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications).
+A *Trust Task specification* published through the public registry **MUST** use this form. [[ref: Trust Task specifications]] intended only for private or internal use — and not published through the public registry — **MAY** use any other absolute URI in one of the two shapes below: an `https` URL, a DID URL, a URN, or another URI scheme. The requirements that apply to those are given in [Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications).
 
-For both forms, the path components below carry identical meaning:
+```
+<prefix>/spec/<slug>/<MAJOR.MINOR>                      path form
+urn:<NID>:<prefix>:spec:<slug-segments>:<MAJOR.MINOR>   URN form
+```
 
-* The URI scheme **MUST** be `https`. Other schemes (including `http`) are non-conformant: every representation served at a *Type URI* depends on transport-layer authentication and integrity, and permitting `http` would normalize a transport-downgrade path for any [[ref: consumer]] that dereferences the URI.
+A *Type URI* whose scheme is `urn` **MUST** use the URN form; every other *Type URI* **MUST** use the path form. In the URN form, the `/`-delimited segments of `<slug>` are written `:`-delimited, so that the slug `acl/grant` appears as `acl:grant`. Examples:
+
+```
+https://trusttasks.org/spec/acl/grant/0.1               public registry
+https://example.com/trust-tasks/spec/acl/grant/0.1      private, https
+did:example:123456789abcdefghi/spec/acl/grant/0.1       private, DID URL
+urn:example:tasks:spec:acl:grant:0.1                    private, URN
+```
+
+A *Type URI* is a **name**. A [[ref: consumer]] identifies the *Trust Task specification* a document conforms to by comparing its `type` with the *Type URIs* it supports by exact string equality, preserving any fragment ([Request and Response Variants](#request-and-response-variants)). Nothing in this framework requires a *consumer* to dereference a *Type URI* in order to process a document. Dereferencing under [Content Negotiation](#content-negotiation) is one way to obtain a specification's representations, and applies only to a *Type URI* whose scheme is `https`; for any other scheme the representations are distributed out of band ([Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications) item 4).
+
+For every form, the components below carry identical meaning:
+
+* The URI scheme **MUST NOT** be `http`. Every representation served at an `http` URI lacks transport-layer authentication and integrity, and permitting it would normalize a transport-downgrade path for any *consumer* that dereferences the URI. A *Type URI* whose scheme is `http` is non-conformant in every form.
 * `<slug>` is a lowercase, hyphen-separated short name assigned to the specification, optionally organized into one or more path segments (e.g. `trust-task-discovery`, or `acl/grant`). The slug **MUST** match the regular expression `^[a-z][a-z0-9]*(-[a-z0-9]+)*(/[a-z][a-z0-9]*(-[a-z0-9]+)*)*$`. Each `/`-delimited segment **MUST** individually satisfy the single-segment grammar (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`); consecutive hyphens are not permitted within a segment, and consecutive slashes are not permitted between segments. Segments group related specifications under a shared namespace and are reflected in the *Type URI* path verbatim — `https://trusttasks.org/spec/acl/grant/0.1` is the *Type URI* of a specification whose slug is `acl/grant`.
-* `<MAJOR.MINOR>` is the specification version as defined in [Version Scheme](#version-scheme). The sole exception is the reserved slug `trust-task`, which addresses this framework specification and carries a three-part `<MAJOR.MINOR.PATCH>` segment instead ([Versioning of This Framework Specification](#versioning-of-this-framework-specification)); every other slug, the framework-defined ones included, carries the two-part form. When resolving a *Type URI*, a *consumer* identifies the version as the final path segment (which always matches one of the two version grammars) and the slug as the segments between `/spec/` and the version.
+* `<MAJOR.MINOR>` is the specification version as defined in [Version Scheme](#version-scheme). The sole exception is the reserved slug `trust-task`, which addresses this framework specification and carries a three-part `<MAJOR.MINOR.PATCH>` segment instead ([Versioning of This Framework Specification](#versioning-of-this-framework-specification)); every other slug, the framework-defined ones included, carries the two-part form. When resolving a *Type URI*, a *consumer* identifies the version as the final segment — the final path segment in the path form, the final `:`-delimited segment in the URN form — which always matches one of the two version grammars, and the slug as the segments between the first `/spec/` (path form) or the first `:spec:` (URN form) and the version. In the URN form the slug's segments are rejoined with `/`, so `urn:example:tasks:spec:acl:grant:0.1` and `https://trusttasks.org/spec/acl/grant/0.1` name specifications with the same slug and version. They are still distinct *Type URIs*, and distinct specifications (see [Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications) item 5).
 
 A *Type URI* used as the value of a [[ref: Trust Task document]]'s `type` member **MAY** additionally carry the fragment `#request` or `#response`, with the meanings defined in [Request and Response Variants](#request-and-response-variants). The fragments `#request` and `#response` are **RESERVED**; no other fragment values are defined by this framework, and individual *Trust Task specifications* **MUST NOT** define their own.
 
@@ -658,7 +674,7 @@ The following slugs are **RESERVED** for framework-defined specifications and **
   | `trust-task-control`     | Cancellation, suspension, and resumption of an accepted task — see [Task Control](#task-control). |
   | `trust-ceremony-receipt` | Evidence that one [[ref: enactment]] of a [[ref: Trust Ceremony]] completed — see [The `ceremony` Member](#the-ceremony-member). |
 
-The *Type URI* is the single canonical, resolvable reference to a versioned *Trust Task specification*. It serves both humans (rendered prose) and machines (validation schema, optional JSON-LD context) under content negotiation as defined in [Content Negotiation](#content-negotiation).
+The *Type URI* is the single canonical reference to a versioned *Trust Task specification*. Where its scheme is `https` it is also resolvable, serving both humans (rendered prose) and machines (validation schema, optional JSON-LD context) under content negotiation as defined in [Content Negotiation](#content-negotiation).
 
 The framework also reserves a parallel `/binding/` subtree under the same authority for [[ref: transport binding]] identifiers and binding-internal resources (envelope `type` values, binding schema URIs, status mappings). The `/binding/` subtree is **structurally disjoint** from `/spec/`: no URI under `/binding/` is a *Type URI*, and a *Trust Task document* whose `type` is rooted at `/binding/...` is malformed. The grammar and rules for the `/binding/` subtree are defined in [Binding Namespace](#binding-namespace).
 
@@ -703,18 +719,20 @@ Not every *Trust Task specification* is intended for the public registry. A [[re
 
 The following rules apply to *Trust Task specifications* that are not published through the public registry:
 
-1. **Authority.** A private specification's *Type URI* **MUST NOT** be served from, or claim to identify a resource at, the `https://trusttasks.org/` domain. That domain is reserved for *Trust Task specifications* published through the public registry process. A private specification **SHOULD** use an HTTPS authority the publisher controls — typically a project or organization domain — so the URI uniquely identifies the specification within the publisher's trust boundary. Examples:
+1. **Authority.** A private specification's *Type URI* **MUST NOT** be served from, or claim to identify a resource at, the `https://trusttasks.org/` domain. That domain is reserved for *Trust Task specifications* published through the public registry process. A private specification's *Type URI* **MUST** be an absolute URI in one of the two shapes defined in [Type URI](#type-uri), and **SHOULD** sit in a namespace the publisher controls, so the URI uniquely identifies the specification: an HTTPS authority (typically a project or organization domain), a DID the publisher controls, or a URN namespace the publisher is entitled to assign names in. Examples:
    ```
-   https://example.com/trust-tasks/<slug>/<MAJOR.MINOR>
+   https://example.com/trust-tasks/spec/<slug>/<MAJOR.MINOR>
    https://internal.example/spec/<slug>/<MAJOR.MINOR>
+   did:example:123456789abcdefghi/spec/<slug>/<MAJOR.MINOR>
+   urn:example:tasks:spec:<slug-segments>:<MAJOR.MINOR>
    ```
-   The slug grammar, version grammar, fragment conventions, and path-component meanings defined in [Type URI](#type-uri) apply unchanged.
+   The slug grammar, version grammar, fragment conventions, and component meanings defined in [Type URI](#type-uri) apply unchanged, whatever the scheme.
 
 2. **Reservation rule.** The slug reservation rule in [Type URI](#type-uri) — that the slug **MUST NOT** be `trust-task` or have a first segment matching `^trust-task(-|/)?` — applies regardless of authority. A private specification **MUST NOT** use those reserved slugs even on its own domain, so that documents flowing between trust boundaries cannot be confused with framework-defined response types.
 
 3. **Framework conformance is unchanged.** All other framework requirements — the document structure ([Trust Task Documents](#trust-task-documents)), versioning rules ([Versioning](#versioning)), conformance behaviour ([Minimum Requirements](#minimum-requirements)), and error response shape ([Error Responses](#error-responses)) — apply identically to private *Trust Task specifications*. Implementations consuming both private and registry-published specifications **SHOULD** use the same validation and signing pipeline for both.
 
-4. **Resolvability.** A private *Type URI* **SHOULD** resolve to the specification's representations under content negotiation ([Content Negotiation](#content-negotiation)) for parties within the publisher's trust boundary, but **MAY** be unresolvable from the public internet. A *consumer* unable to dereference a private *Type URI* relies on out-of-band distribution of the specification document and schema.
+4. **Resolvability.** A private *Type URI* whose scheme is `https` **SHOULD** resolve to the specification's representations under content negotiation ([Content Negotiation](#content-negotiation)) for parties within the publisher's trust boundary, but **MAY** be unresolvable from the public internet. A private *Type URI* of any other scheme is not dereferenced under this framework. A *consumer* that does not dereference a private *Type URI* relies on out-of-band distribution of the specification document and schema, and authenticates their source as [Schema-Validation DoS](#schema-validation-dos) requires of any schema not embedded at build time.
 
 5. **Promotion to the registry (informative).** A private *Trust Task specification* **MAY** later be submitted for inclusion in the public registry. The submission process is governed by the registry policy referenced in [Maturity Levels](#maturity-levels); a re-host typically involves a slug check, transfer of the JSON Schema document, and publication under `https://trusttasks.org/spec/<slug>/<MAJOR.MINOR>`. The original private *Type URI* and the new public *Type URI* identify distinct specifications unless and until the registry policy explicitly aliases them.
 
@@ -762,7 +780,7 @@ A *conforming producer* **MUST**:
 
 1. Emit a [[ref: Trust Task document]] whose top-level structure satisfies [Top-Level Members](#top-level-members).
 2. Set the `type` member to the [[ref: Type URI]] of the [[ref: Trust Task specification]] being implemented, including its `<MAJOR.MINOR>` segment.
-3. Place all task-specific data in `payload`, and emit a `payload` value that validates against the JSON Schema obtained by content-negotiating the *Type URI* for `application/schema+json` (see [Content Negotiation](#content-negotiation)).
+3. Place all task-specific data in `payload`, and emit a `payload` value that validates against the specification's JSON Schema — obtained by content-negotiating the *Type URI* for `application/schema+json` (see [Content Negotiation](#content-negotiation)), or distributed out of band where the *Type URI* is not dereferenced ([Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications) item 4).
 4. Populate `id` with a value satisfying [The `id` Member](#the-id-member).
 
 A *conforming producer* **SHOULD** populate `issuedAt` to support freshness checks downstream, **SHOULD** populate `issuer` and `recipient` when the transport in use does not provide authenticated party identity end-to-end between [[ref: producer]] and [[ref: consumer]], **SHOULD** set `threadId` when emitting a *Trust Task document* in response to another (see [The `threadId` Member](#the-threadid-member)), **SHOULD** set `parentThreadId` when the exchange is conducted inside another and carry it onto every document of the inner exchange (see [The `parentThreadId` Member](#the-parentthreadid-member)), **SHOULD** set `ceremony` when the document is a step of a [[ref: Trust Ceremony]] and carry the same `enactment` onto every document of that step including any [[ref: error response]] (see [The `ceremony` Member](#the-ceremony-member)), and **SHOULD** preserve any unrecognized members received from upstream parties when forwarding a *Trust Task document*.
@@ -849,8 +867,8 @@ A *conforming Trust Task specification* **MUST** declare each of the following. 
    2. Sets `$id` to the specification's *Type URI* (without fragment).
    3. Sets `$schema` to `https://json-schema.org/draft/2020-12/schema`.
    4. States how unrecognized payload members are treated — by specifying `additionalProperties` explicitly as `false`, by specifying `unevaluatedProperties` as `false`, or with an accompanying prose statement. A schema assembled by `allOf` over a *shared schema component* ([Shared Schema Components](#shared-schema-components)) **MUST** use `unevaluatedProperties`: `additionalProperties` is evaluated by each subschema against the whole instance and cannot see members a sibling subschema matched, so it rejects the composing schema's own members. For the same reason a shared component intended for composition **SHOULD** leave itself open and let the consuming schema close the result.
-   5. Is served at its *Type URI* under content negotiation for `application/schema+json`.
-   6. Where the specification defines a success-response document (per [Request and Response Variants](#request-and-response-variants)), the schema **MUST** contain a sub-schema reachable via `$anchor: "response"` describing the response document's `payload`; the top-level schema (or the sub-schema reachable via `$anchor: "request"`) describes the request document's `payload`. A *consumer* receiving a document whose `type` carries `#response` resolves the response sub-schema by dereferencing the bare *Type URI* and following the `response` anchor. Where the specification defines no success-response document, the schema **MUST NOT** declare a `response` anchor; such tasks are fire-and-forget at the application layer (failures are still reported via `trust-task-error` per [Error Responses](#error-responses)).
+   5. Is served at its *Type URI* under content negotiation for `application/schema+json`, where the *Type URI*'s scheme is `https`; otherwise it is distributed out of band ([Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications) item 4).
+   6. Where the specification defines a success-response document (per [Request and Response Variants](#request-and-response-variants)), the schema **MUST** contain a sub-schema reachable via `$anchor: "response"` describing the response document's `payload`; the top-level schema (or the sub-schema reachable via `$anchor: "request"`) describes the request document's `payload`. A *consumer* receiving a document whose `type` carries `#response` resolves the response sub-schema from the schema of the bare *Type URI* (however obtained) and follows the `response` anchor. Where the specification defines no success-response document, the schema **MUST NOT** declare a `response` anchor; such tasks are fire-and-forget at the application layer (failures are still reported via `trust-task-error` per [Error Responses](#error-responses)).
 8. **Proof requirement** — an explicit statement of whether the `proof` member is **OPTIONAL**, **RECOMMENDED**, or **REQUIRED**, together with a brief rationale referencing the threat model addressed (for example, tampering by intermediaries, replay, repudiation by the *producer*, or reliance by third parties beyond the original *consumer*). The declared requirement **MUST NOT** be weaker than the default applicable under [When to Include a Proof](#when-to-include-a-proof).
 
     The statement takes one of two forms. A specification **MAY** declare a **single** requirement applying to every document variant, or it **MAY** declare **per-variant** requirements for the *request* and the *response* separately. The per-variant form exists because the two are relied upon differently: a response retained as evidence by a party outside the original exchange can require a proof where the request that triggered it does not, and the reverse is equally common — a request that destroys state needs to be attributable while the acknowledgement it returns protects nothing. A single value forces the stricter of the two onto both, overstating the requirement on whichever variant needs it less. Where a specification declares no requirement for the *response*, the *request*'s applies to it, so an omission can never weaken a variant.

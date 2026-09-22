@@ -148,6 +148,16 @@ If any step fails, the *consumer* returns an [[ref: error response]] per [Error 
 
 *This appendix is informative.*
 
+#### Unreleased
+
+This revision is **additive**. The document wire format is unchanged, and every document conforming to 0.6.0 still conforms. It widens what a private specification may use as its *Type URI*. A *consumer* that parses *Type URIs* by assuming `https` must be updated before it can accept documents of a private specification that uses another scheme.
+
+* **A private *Type URI* may be any absolute URI ([Type URI](#type-uri), [Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications)).** The scheme had to be `https`, which tied every specification's name to DNS and a certificate authority even where no *consumer* ever dereferences it. Specifications in the public registry keep the `https://trusttasks.org/spec/<slug>/<MAJOR.MINOR>` form unchanged. A private specification may now also be named by a DID URL or a URN. Every form except URNs uses the existing path shape, ending `/spec/<slug>/<MAJOR.MINOR>`; a URN ends `:spec:<slug-segments>:<MAJOR.MINOR>`, with the slug's `/` written as `:`. The slug and version grammars, the reserved slugs and the reserved fragments apply to every form, and `http` is excluded from every form.
+
+* **A *Type URI* is a name ([Type URI](#type-uri)).** The framework now states what it already assumed: a *consumer* matches `type` by exact string equality and need not dereference it. Content negotiation applies only to `https` *Type URIs*. A specification whose *Type URI* is not dereferenced distributes its document and schema out of band, and a *consumer* authenticates their source as it would any schema not embedded at build time. The producer requirement and the payload-schema requirement that assumed content negotiation now allow for this.
+
+* **Corrected private-URI example.** The first private example in [Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications) omitted the `/spec/` segment that the slug-extraction rule in [Type URI](#type-uri) depends on.
+
 #### Framework version 0.6.0
 
 This revision is **additive**. The document wire format gains no member and loses none, and every document conforming to 0.5.0 still conforms. It adds one new obligation on *consumers*, and one on *Trust Task specifications*. Each applies only where an exchange is cited from outside the framework as evidence that it completed.

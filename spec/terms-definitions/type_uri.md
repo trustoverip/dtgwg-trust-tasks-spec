@@ -1,3 +1,3 @@
 [[def: Type URI, Type URIs]]
 
-~ A URI that identifies a *Trust Task specification* at a specific version and serves as the single resolvable namespace for that version. The canonical form is defined in [Type URI](#type-uri).
+~ An absolute URI that identifies a *Trust Task specification* at a specific version. It is compared as a name; where its scheme is `https` it is also the resolvable namespace for that version. The public-registry form, and the forms a private specification may use, are defined in [Type URI](#type-uri).
