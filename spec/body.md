@@ -190,9 +190,44 @@ A *consumer* that does not implement JSON-LD processing **MUST** ignore the `@co
 
 A *Trust Task document* **MAY** include a `proof` member whose value is a W3C [[ref: Data Integrity Proof]] object as defined in [VC Data Integrity](https://www.w3.org/TR/vc-data-integrity/). When present, the `proof` binds the document's content to its `issuer`.
 
-The choice of cryptographic suite is open: any suite registered by the W3C Verifiable Credential Working Group (for example, `eddsa-rdfc-2022` or `ecdsa-rdfc-2019`, or any future suite) **MAY** be used. The `verificationMethod` of the proof **MUST** resolve to verification material controlled by the *party* identified by the document's `issuer` member (see [The `issuer` and `recipient` Members](#the-issuer-and-recipient-members)).
+The choice of cryptographic suite is open beyond the baseline defined in [Cryptosuites](#cryptosuites): any Data Integrity cryptosuite **MAY** be used where the *consumer* verifies it. The `verificationMethod` of the proof **MUST** resolve to verification material controlled by the *party* identified by the document's `issuer` member (see [The `issuer` and `recipient` Members](#the-issuer-and-recipient-members)).
 
 When `proof` is present, it covers the document with `proof` itself excluded from the signed content, per the canonicalization rules of the chosen Data Integrity suite.
+
+#### Cryptosuites
+
+**The baseline.** A conforming [[ref: consumer]] **MUST** be able to verify a `proof` whose `cryptosuite` is `eddsa-jcs-2022` ([Data Integrity EdDSA Cryptosuites](https://www.w3.org/TR/vc-di-eddsa/)): Ed25519 over the [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) canonicalization of the document. The baseline is a floor on **verification**, not a constraint on signing. It is the one suite a [[ref: producer]] can rely on any conforming *consumer* to verify, and so it is what makes two independent implementations interoperable without prior agreement. JCS is chosen over RDF canonicalization because a *Trust Task document* is JSON whether or not it carries `@context` ([JSON-LD Compatibility](#json-ld-compatibility)), and verifying it must not require a JSON-LD processor.
+
+**Choosing a suite.** A *producer* selects the suite from the key it signs with, and a *consumer* selects the verifier from the proof's `cryptosuite` and the key type of its `verificationMethod`; no further negotiation member is defined. A *producer* signing for a *consumer* whose capabilities it does not know **SHOULD** sign with the baseline. It **MAY** sign with another suite where it has reason to believe the *consumer* verifies it:
+
+1. the governing *Trust Task specification* requires or permits that suite ([Specification Requirements](#specification-requirements) item 8);
+2. the *parties*' trust framework or a prior agreement between them names it; or
+3. the *recipient*'s *VID* resolves to verification material of the key type that suite uses — a *party* that publishes an ML-DSA key is taken to verify ML-DSA proofs.
+
+**Beyond the baseline.** A *consumer* **SHOULD** also be able to verify `ecdsa-jcs-2019` ([Data Integrity ECDSA Cryptosuites](https://www.w3.org/TR/vc-di-ecdsa/)) with a P-256 key: hardware-backed signers, including platform secure enclaves, WebAuthn authenticators and many HSMs, sign only with P-256. Every other suite is agreed as above.
+
+**An unsupported suite is a failure, not an absence.** A *consumer* that does not implement the `cryptosuite` a `proof` names **MUST** reject the document with `proofInvalid` ([Consumer Requirements](#consumer-requirements) item 7). It **MUST NOT** process the document as though it carried no `proof`: a document that is required to carry a proof would otherwise be accepted on the strength of a signature nobody checked.
+
+**A specification may require a suite.** A *Trust Task specification* **MAY** require a particular suite, or a class of suites, for its documents — for example a quantum-resistant suite for evidence intended to be retained for many years, or a suite that meets a regulatory requirement. It states the requirement alongside its proof requirement ([Specification Requirements](#specification-requirements) item 8). Such a requirement narrows what the *producer* signs with; it does not relieve any *consumer* of the baseline.
+
+**Quantum-resistant suites (draft).** The quantum-resistant Data Integrity suites are, at this framework version, an experimental W3C draft ([Quantum-Resistant Cryptosuites v1.0](https://w3c.github.io/vc-di-quantum-resistant/)) and are **not** part of the baseline. They are used under the rules above, as agreed suites. So that implementations that adopt them now interoperate, this framework pins the identifiers and key encodings it uses to that draft:
+
+| `cryptosuite` | Algorithm | Multikey public-key header | Multibase |
+|---|---|---|---|
+| `mldsa44-jcs-2024` | ML-DSA-44 ([FIPS 204](https://csrc.nist.gov/pubs/fips/204/final)) | `mldsa-44-pub`, multicodec `0x1210` | base64url, `u` |
+| `slhdsa128-jcs-2024` | SLH-DSA-SHA2-128s ([FIPS 205](https://csrc.nist.gov/pubs/fips/205/final)) | `slhdsa-sha2-128s-pub`, multicodec `0x1220` | base64url, `u` |
+
+The JCS variants are pinned for the reason the baseline is. The draft's other suites (its RDF-canonicalized variants, FALCON-512 and SQIsign) are not pinned and are agreed like any other suite. Where the draft changes an identifier or an encoding before it is finalized, this framework adopts the new identifier as a new entry and does not reinterpret an existing one: a `proof` already produced under a pinned identifier keeps verifying under it. The framework expects to name a quantum-resistant suite in the baseline once a W3C Recommendation defines one.
+
+The suites in this section, summarized *(non-normative)*:
+
+| `cryptosuite` | Key | Status in this framework |
+|---|---|---|
+| `eddsa-jcs-2022` | Ed25519 | Baseline — every *consumer* **MUST** verify |
+| `ecdsa-jcs-2019` | P-256 | Every *consumer* **SHOULD** verify |
+| `mldsa44-jcs-2024` | ML-DSA-44 | Draft; pinned; agreed |
+| `slhdsa128-jcs-2024` | SLH-DSA-SHA2-128s | Draft; pinned; agreed |
+| any other Data Integrity suite | — | Agreed |
 
 #### When to Include a Proof
 
@@ -886,7 +921,7 @@ A *conforming Trust Task specification* **MUST** declare each of the following. 
    4. States how unrecognized payload members are treated — by specifying `additionalProperties` explicitly as `false`, by specifying `unevaluatedProperties` as `false`, or with an accompanying prose statement. A schema assembled by `allOf` over a *shared schema component* ([Shared Schema Components](#shared-schema-components)) **MUST** use `unevaluatedProperties`: `additionalProperties` is evaluated by each subschema against the whole instance and cannot see members a sibling subschema matched, so it rejects the composing schema's own members. For the same reason a shared component intended for composition **SHOULD** leave itself open and let the consuming schema close the result.
    5. Is served at its *Type URI* under content negotiation for `application/schema+json`, where the *Type URI*'s scheme is `https`; otherwise it is distributed out of band ([Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications) item 4).
    6. Where the specification defines a success-response document (per [Request and Response Variants](#request-and-response-variants)), the schema **MUST** contain a sub-schema reachable via `$anchor: "response"` describing the response document's `payload`; the top-level schema (or the sub-schema reachable via `$anchor: "request"`) describes the request document's `payload`. A *consumer* receiving a document whose `type` carries `#response` resolves the response sub-schema from the schema of the bare *Type URI* (however obtained) and follows the `response` anchor. Where the specification defines no success-response document, the schema **MUST NOT** declare a `response` anchor; such tasks are fire-and-forget at the application layer (failures are still reported via `trust-task-error` per [Error Responses](#error-responses)).
-8. **Proof requirement** — an explicit statement of whether the `proof` member is **OPTIONAL**, **RECOMMENDED**, or **REQUIRED**, together with a brief rationale referencing the threat model addressed (for example, tampering by intermediaries, replay, repudiation by the *producer*, or reliance by third parties beyond the original *consumer*). The declared requirement **MUST NOT** be weaker than the default applicable under [When to Include a Proof](#when-to-include-a-proof).
+8. **Proof requirement** — an explicit statement of whether the `proof` member is **OPTIONAL**, **RECOMMENDED**, or **REQUIRED**, together with a brief rationale referencing the threat model addressed (for example, tampering by intermediaries, replay, repudiation by the *producer*, or reliance by third parties beyond the original *consumer*). The declared requirement **MUST NOT** be weaker than the default applicable under [When to Include a Proof](#when-to-include-a-proof). The specification **MAY** also require a particular cryptosuite, or a class of cryptosuites, for its proofs ([Cryptosuites](#cryptosuites)).
 
     The statement takes one of two forms. A specification **MAY** declare a **single** requirement applying to every document variant, or it **MAY** declare **per-variant** requirements for the *request* and the *response* separately. The per-variant form exists because the two are relied upon differently: a response retained as evidence by a party outside the original exchange can require a proof where the request that triggered it does not, and the reverse is equally common — a request that destroys state needs to be attributable while the acknowledgement it returns protects nothing. A single value forces the stricter of the two onto both, overstating the requirement on whichever variant needs it less. Where a specification declares no requirement for the *response*, the *request*'s applies to it, so an omission can never weaken a variant.
 
@@ -1408,7 +1443,7 @@ A *consumer* that does not implement task control rejects a control document wit
 
 *This section is informative.* Future revisions are expected to make portions of it normative as individual Trust Task specifications surface concrete requirements.
 
-A [[ref: Trust Task document]] carries no inherent transport security. The framework's default rules for when an integrity proof is required of a document are given in [When to Include a Proof](#when-to-include-a-proof), and each [[ref: Trust Task specification]] declares its own requirement under [Specification Requirements](#specification-requirements). When `proof` is included, it **MUST** conform to the W3C *Data Integrity* format defined in [VC Data Integrity](https://www.w3.org/TR/vc-data-integrity/) (see [Proof](#proof)); implementations select an appropriate cryptographic suite from the W3C-registered set based on the trust requirements agreed by the parties.
+A [[ref: Trust Task document]] carries no inherent transport security. The framework's default rules for when an integrity proof is required of a document are given in [When to Include a Proof](#when-to-include-a-proof), and each [[ref: Trust Task specification]] declares its own requirement under [Specification Requirements](#specification-requirements). When `proof` is included, it **MUST** conform to the W3C *Data Integrity* format defined in [VC Data Integrity](https://www.w3.org/TR/vc-data-integrity/) (see [Proof](#proof)); every *consumer* verifies the baseline suite, and any other suite is selected as [Cryptosuites](#cryptosuites) describes, based on the trust requirements agreed by the parties.
 
 ### Cross-Recipient Replay
 
@@ -1521,12 +1556,17 @@ A conformance test suite for this framework has not yet been published. The regi
 - [IETF RFC 9562: Universally Unique IDentifiers (UUIDs)](https://www.rfc-editor.org/rfc/rfc9562)
 - [IETF RFC 5234: Augmented BNF for Syntax Specifications (ABNF)](https://www.rfc-editor.org/rfc/rfc5234)
 - [W3C Verifiable Credential Data Integrity 1.0](https://www.w3.org/TR/vc-data-integrity/)
+- [W3C Data Integrity EdDSA Cryptosuites v1.0](https://www.w3.org/TR/vc-di-eddsa/)
+- [W3C Data Integrity ECDSA Cryptosuites v1.0](https://www.w3.org/TR/vc-di-ecdsa/)
 - [JSON Schema: A Media Type for Describing JSON Documents, Draft 2020-12](https://json-schema.org/draft/2020-12/schema)
 - [W3C Decentralized Identifiers (DIDs) v1.0](https://www.w3.org/TR/did-core/)
 - [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html)
 
 ### Informative References
 
+- [W3C Quantum-Resistant Cryptosuites v1.0](https://w3c.github.io/vc-di-quantum-resistant/) (experimental draft)
+- [NIST FIPS 204: Module-Lattice-Based Digital Signature Standard (ML-DSA)](https://csrc.nist.gov/pubs/fips/204/final)
+- [NIST FIPS 205: Stateless Hash-Based Digital Signature Standard (SLH-DSA)](https://csrc.nist.gov/pubs/fips/205/final)
 - [W3C Verifiable Credentials Data Model v2.0](https://www.w3.org/TR/vc-data-model-2.0/)
 - [W3C Manual of Style](https://www.w3.org/guide/manual-of-style/)
 - [ToIP Governance Metamodel Specification V1.0](https://trustoverip.org/wp-content/uploads/ToIP-Governance-Metamodel-Specification-V1.0-2021-12-21.pdf)
