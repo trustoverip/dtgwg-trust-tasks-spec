@@ -131,7 +131,7 @@ The framework reserves the following normative rules for any `ext` member, in an
 2. Each *immediate* key of `ext` **MUST** match the reverse-DNS grammar `^[a-z][a-z0-9-]*(\.[a-z0-9-]+)+$` — lowercase, at least one dot. Examples: `vnd.affinidi.webvh`, `org.example.acl`. Bare keys without a namespace are non-conforming.
 3. The structure under each namespace is opaque to the framework. Producers MAY place any JSON value the namespace's controller chooses to define.
 4. A *producer* **MUST NOT** rely on any framework-level meaning for the contents of any `ext.*` namespace.
-5. A *consumer* **MUST** ignore namespaces it does not recognize, consistent with the unrecognized-member rule of [Consumer Requirements](#consumer-requirements). A *consumer* **MAY** require its own namespace as a matter of local policy and reject documents lacking that namespace with `malformedRequest`.
+5. A *consumer* **MUST** ignore namespaces it does not recognize, consistent with the unrecognized-member rule of [Consumer Requirements](#consumer-requirements), **except** where the namespace is named critical under [Marking a Namespace Critical](#marking-a-namespace-critical). A *consumer* **MAY** require its own namespace as a matter of local policy and reject documents lacking that namespace with `malformedRequest`.
 6. The framework reserves **no** `ext.*` namespace today. [[ref: Trust Task specifications]] **MUST NOT** define cross-specification semantics for any `ext` key; ecosystem semantics belong to the namespace controller.
 
 A *Trust Task specification* opts into `ext` at a given object level by including a property named `ext` (typically a `$ref` to the framework's published `Ext` `$def`) and adjusting that level's `additionalProperties` declaration accordingly. Specifications that do not include `ext` at a given level reject the member at that level under their existing `additionalProperties: false`.
@@ -139,6 +139,23 @@ A *Trust Task specification* opts into `ext` at a given object level by includin
 The signed envelope covers `ext` in the same way it covers any other member of `payload`, so `ext` inherits the integrity guarantees of [Proof](#proof) when a `proof` is present.
 
 `ext` is distinct from the task-specific `details` member of a `trust-task-error` response ([Extension by Individual Trust Task Specifications](#extension-by-individual-trust-task-specifications)). `details` carries structured data tied to a specific error `code` defined by the spec author; `ext` carries vendor-namespaced extension data defined by the ecosystem. Both members **MAY** appear on the same document and are not interchangeable.
+
+#### Marking a Namespace Critical
+
+Rule 5 makes an `ext` namespace safe to ignore, which is what allows a specification to grow without a version increment. It also makes a *producer* unable to tell an ignored namespace from an understood one: a *consumer* that silently drops a namespace the document's meaning depends on reaches a verdict the *producer* did not ask for, and reaches it invisibly. Criticality is how a *producer* forecloses that.
+
+A *Trust Task specification* that allows `ext` at a given object level **MAY** also allow an `extCritical` member at that same level. The following rules apply wherever it is allowed:
+
+1. `extCritical` **MUST** be an array of one or more unique strings when present, and **MUST NOT** be present at an object level where `ext` is absent.
+2. Each entry **MUST** match the reverse-DNS grammar of rule 2 above and **MUST** name a namespace present as an immediate key of the sibling `ext` member. An entry naming an absent namespace is non-conforming; a *consumer* **MUST** reject such a document with `malformedRequest`.
+3. A namespace named in `extCritical` is **critical**: the *producer* asserts that the document's meaning depends on it, and that processing the document as though the namespace were absent would reach a different outcome than the one requested.
+4. A *consumer* that does not recognize a critical namespace **MUST NOT** process the document, and **MUST** reject it with `unsupportedExtension` ([Standard Error Codes](#standard-error-codes)). Rule 5 above does not apply to it. A *consumer* that recognizes the namespace processes the document under its own policy exactly as it would have without the marking — criticality obliges a *consumer* to understand a namespace or refuse, and never to act on one.
+5. A *producer* **MUST NOT** mark a namespace critical where the document remains correct without it. Marking is a statement about meaning, not about importance: a namespace carrying an optimization, a hint, or an audit annotation is not critical, and marking it turns every *consumer* that has not implemented it into a failure where it would otherwise have interoperated.
+6. A *producer* **SHOULD** establish that a *consumer* understands a namespace before marking it critical — through discovery ([Discovery and Capability Negotiation](#discovery-and-capability-negotiation)), through the governance framework the parties operate under, or out of band. Criticality reports a downgrade rather than preventing one, so a *producer* that marks without establishing support has chosen a failed exchange over a silent one; that is the right trade only where the silent outcome would have been worse.
+
+`extCritical` is covered by `proof` exactly as `ext` is, so a critical marking cannot be stripped from a signed document without invalidating it. On an unsigned document it is removable in transit, and a *producer* that needs the marking to survive the trip **MUST** sign the document.
+
+A specification opts in by including an `extCritical` property at the same object level as its `ext` property, typically as a `$ref` to the framework's published `ExtCritical` `$def`. A specification that allows `ext` and not `extCritical` at a given level rejects the member at that level under its existing `additionalProperties: false`, and every namespace at that level remains ignorable under rule 5.
 
 ### JSON-LD Compatibility
 
@@ -819,7 +836,7 @@ Where execution has already produced partial or irreversible effects and the *co
 
 A *conforming consumer* **SHOULD** preserve, but **MUST NOT** act upon, members it does not recognize. A *consumer* that does not implement JSON-LD processing **MUST** ignore the `@context` member.
 
-For documents that carry an `ext` member (see [The `ext` Extension Member](#the-ext-extension-member)), a *conforming consumer* **MUST** ignore every `ext` immediate-key namespace it does not recognize — the unrecognized-namespace rule is the same "preserve but MUST NOT act upon" rule as for unrecognized top-level members, applied at the `ext` level. A *consumer* **MAY** require one or more specific namespaces under `ext` as a matter of local policy and **MUST** reject a document missing a required namespace with `malformedRequest`; [[ref: consumers]] applying such a policy **SHOULD** publish the requirement via discovery ([Discovery and Capability Negotiation](#discovery-and-capability-negotiation)) so *producers* can satisfy it before the wire trip.
+For documents that carry an `ext` member (see [The `ext` Extension Member](#the-ext-extension-member)), a *conforming consumer* **MUST** ignore every `ext` immediate-key namespace it does not recognize — the unrecognized-namespace rule is the same "preserve but MUST NOT act upon" rule as for unrecognized top-level members, applied at the `ext` level — **except** where the document names that namespace in a sibling `extCritical` member, which a *conforming consumer* **MUST** reject with `unsupportedExtension` rather than ignore ([Marking a Namespace Critical](#marking-a-namespace-critical)). A *consumer* **MAY** require one or more specific namespaces under `ext` as a matter of local policy and **MUST** reject a document missing a required namespace with `malformedRequest`; [[ref: consumers]] applying such a policy **SHOULD** publish the requirement via discovery ([Discovery and Capability Negotiation](#discovery-and-capability-negotiation)) so *producers* can satisfy it before the wire trip.
 
 When a *consumer* rejects a *Trust Task document* under any rule in this section, and the transport in use supports a response from *consumer* to *producer*, the *consumer* **SHOULD** return an *error response* conforming to [Error Responses](#error-responses).
 
@@ -1035,6 +1052,7 @@ The framework defines the error codes listed below. A *conforming consumer* **MU
 | `malformedRequest` | The document did not validate against the framework schema or the task-specific payload schema. | `false` |
 | `unsupportedType` | The *consumer* does not recognize the `type` URI. | `false` |
 | `unsupportedVersion` | The `type` URI was recognized but its `MAJOR.MINOR` version is not supported. | `false` |
+| `unsupportedExtension` | The document named a namespace critical under [Marking a Namespace Critical](#marking-a-namespace-critical) that the *consumer* does not recognize. The *consumer* understood the `type` and its version, and refused rather than process the document without the namespace. | `false` |
 | `expired` | The document's `expiresAt` was in the past at the time of evaluation. | `false` |
 | `proofRequired` | A `proof` was required (by the *Trust Task specification* or *consumer* policy) and was missing. | `false` |
 | `proofInvalid` | A `proof` was present but failed verification. | `false` |
