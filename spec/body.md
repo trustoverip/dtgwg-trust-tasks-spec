@@ -49,7 +49,7 @@ A *Trust Task document* **MAY** contain additional top-level members beyond thos
 >     "cryptosuite": "eddsa-jcs-2022",
 >     "verificationMethod": "did:web:org.example#key-1",
 >     "created": "2026-06-10T14:00:00Z",
->     "proofPurpose": "assertionMethod",
+>     "proofPurpose": "authentication",
 >     "proofValue": "z5xy..."
 >   }
 > }
@@ -190,7 +190,7 @@ A *consumer* that does not implement JSON-LD processing **MUST** ignore the `@co
 
 A *Trust Task document* **MAY** include a `proof` member whose value is a W3C [[ref: Data Integrity Proof]] object as defined in [VC Data Integrity](https://www.w3.org/TR/vc-data-integrity/). When present, the `proof` binds the document's content to its `issuer`.
 
-The choice of cryptographic suite is open beyond the baseline defined in [Cryptosuites](#cryptosuites): any Data Integrity cryptosuite **MAY** be used where the *consumer* verifies it. The `verificationMethod` of the proof **MUST** resolve to verification material controlled by the *party* identified by the document's `issuer` member (see [The `issuer` and `recipient` Members](#the-issuer-and-recipient-members)).
+The choice of cryptographic suite is open beyond the baseline defined in [Cryptosuites](#cryptosuites): any Data Integrity cryptosuite **MAY** be used where the *consumer* verifies it. The `verificationMethod` of the proof **MUST** resolve to verification material controlled by the *party* identified by the document's `issuer` member (see [The `issuer` and `recipient` Members](#the-issuer-and-recipient-members)). It **MUST** also be one that *party* has authorized for the proof's `proofPurpose` ([Proof Purpose and Verification Relationship](#proof-purpose-and-verification-relationship)).
 
 When `proof` is present, it covers the document with `proof` itself excluded from the signed content, per the canonicalization rules of the chosen Data Integrity suite.
 
@@ -240,6 +240,24 @@ The default rules governing the presence of `proof` in a *Trust Task document* a
 Whenever `proof` is included, the [Audience Binding](#audience-binding) rule also applies: the *producer* commits to an in-band `recipient` so that the proof binds not only the content but also the intended audience.
 
 An individual *Trust Task specification* **MAY** strengthen these defaults (for example, mandate `proof` regardless of transport) but **MUST NOT** weaken them. The declaration each *Trust Task specification* makes about its own `proof` requirement is governed by [Specification Requirements](#specification-requirements).
+
+#### Proof Purpose and Verification Relationship
+
+A key controlled by the `issuer` is not thereby authorized to sign for every purpose. A DID document, or any other controller document an `issuer` resolves to, states what each of its keys is for through its verification relationships, and a key published only for key agreement, or authorized only to authenticate, has not been authorized to make assertions. A *consumer* that accepted any key listed anywhere in the document would let whichever key is least protected sign for the most consequential purpose.
+
+This section restates, for *Trust Task documents*, the rule [VC Data Integrity](https://www.w3.org/TR/vc-data-integrity/) already applies through the Retrieve Verification Method algorithm of [Controlled Identifiers](https://www.w3.org/TR/cid-1.0/#retrieve-verification-method). It is a clarification of conformance to those specifications, not an additional requirement on top of them. When verifying a `proof`, a *consumer* **MUST**:
+
+1. Treat the value of `proofPurpose` as the name of the verification relationship to check. The purposes a signature can carry are `assertionMethod`, `authentication`, `capabilityInvocation` and `capabilityDelegation`. A `proof` whose `proofPurpose` is `keyAgreement`, is absent, or names no verification relationship the *consumer* recognizes **MUST** be rejected: a key-agreement key never authorizes a signature.
+2. Resolve the `verificationMethod` against the controller document of the `issuer`, and reject the `proof` unless the identifier of that document is the `issuer`, exactly as compared under [The `issuer` and `recipient` Members](#the-issuer-and-recipient-members), and the verification method's `controller` is that same identifier. A verification method belonging to any other identifier is refused even when the `issuer`'s document lists it.
+3. Reject the `proof` unless the verification method appears in the verification relationship named by `proofPurpose`, either by reference or embedded by value. A reference is resolved before comparison: a relative reference such as `#key-1` is resolved against the controller document's identifier, and the method it names is taken from the document's `verificationMethod` set. A reference **MUST NOT** be resolved to a verification method embedded under a different relationship, since that method is defined for that relationship alone. A verification method that appears only under another relationship, or only under `verificationMethod`, is not authorized for the purpose.
+
+Where a DID method defines the relationships of a key implicitly rather than listing them, the relationships the method's resolution defines are the ones checked. For example, the single signing key of a `did:key` is authorized for `authentication`, `assertionMethod`, `capabilityInvocation` and `capabilityDelegation`, and the key-agreement key derived from it is authorized for `keyAgreement` only.
+
+A failure under this section is a failed verification, and the *consumer* rejects the document with `proofInvalid` ([Consumer Requirements](#consumer-requirements) item 7).
+
+**Which purpose a producer signs with.** A *producer* **MUST** set `proofPurpose` to a relationship under which its own controller document lists the signing key. A *producer* **SHOULD** sign a *Trust Task document* with `proofPurpose` `authentication`. The proof of a *Trust Task document* shows that the *party* controlling the `issuer` identifier produced the document, whether it is a request, a response, or an instruction, and that is what the `authentication` relationship authorizes a key to show. `assertionMethod` authorizes a key to make attestations that a third party may rely on in its own right. A *producer* **SHOULD NOT** sign a *Trust Task document* with `assertionMethod` unless the governing *Trust Task specification* defines the document's proof as such an attestation ([Specification Requirements](#specification-requirements) item 8). A key an *issuer* keeps for its day-to-day operation is then never required to hold attestation authority.
+
+The rules above do not depend on which purpose a *producer* chose: a *consumer* checks the relationship the `proof` names. A *Trust Task specification* **MAY** require a particular `proofPurpose` for its documents, stating it with its proof requirement, and a *consumer* **MAY** apply such a requirement as local policy. During a migration an *issuer* can therefore list a key under both relationships, so that proofs made before and after the change both verify.
 
 ### The `issuer` and `recipient` Members
 
@@ -1072,7 +1090,7 @@ Under `identityMismatch` a *consumer* **SHOULD** omit `inResponseTo.id`: per [Th
 >     "cryptosuite": "eddsa-jcs-2022",
 >     "verificationMethod": "did:web:maintainer.example#key-1",
 >     "created": "2026-06-11T14:05:00Z",
->     "proofPurpose": "assertionMethod",
+>     "proofPurpose": "authentication",
 >     "proofValue": "z58D..."
 >   }
 > }

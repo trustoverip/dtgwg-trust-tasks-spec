@@ -134,7 +134,7 @@ Both codes are namespaced under the emitting specification's own slug, per rule 
     "cryptosuite": "eddsa-jcs-2022",
     "verificationMethod": "did:web:org.example#key-1",
     "created": "2026-06-10T14:00:00Z",
-    "proofPurpose": "assertionMethod",
+    "proofPurpose": "authentication",
     "proofValue": "z5xy..."
   }
 }
