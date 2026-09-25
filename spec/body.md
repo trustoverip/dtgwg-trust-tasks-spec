@@ -49,7 +49,7 @@ A *Trust Task document* **MAY** contain additional top-level members beyond thos
 >     "cryptosuite": "eddsa-jcs-2022",
 >     "verificationMethod": "did:web:org.example#key-1",
 >     "created": "2026-06-10T14:00:00Z",
->     "proofPurpose": "assertionMethod",
+>     "proofPurpose": "authentication",
 >     "proofValue": "z5xy..."
 >   }
 > }
@@ -253,7 +253,11 @@ This section restates, for *Trust Task documents*, the rule [VC Data Integrity](
 
 Where a DID method defines the relationships of a key implicitly rather than listing them, the relationships the method's resolution defines are the ones checked. For example, the single signing key of a `did:key` is authorized for `authentication`, `assertionMethod`, `capabilityInvocation` and `capabilityDelegation`, and the key-agreement key derived from it is authorized for `keyAgreement` only.
 
-A failure under this section is a failed verification, and the *consumer* rejects the document with `proofInvalid` ([Consumer Requirements](#consumer-requirements) item 7). A *producer* **MUST** set `proofPurpose` to a relationship under which its own controller document lists the signing key. `assertionMethod` is the purpose for a document asserting its content; a *Trust Task specification* whose proof demonstrates control of an identifier, such as an authentication exchange, **MAY** require `authentication` instead.
+A failure under this section is a failed verification, and the *consumer* rejects the document with `proofInvalid` ([Consumer Requirements](#consumer-requirements) item 7).
+
+**Which purpose a producer signs with.** A *producer* **MUST** set `proofPurpose` to a relationship under which its own controller document lists the signing key. A *producer* **SHOULD** sign a *Trust Task document* with `proofPurpose` `authentication`. The proof of a *Trust Task document* shows that the *party* controlling the `issuer` identifier produced the document, whether it is a request, a response, or an instruction, and that is what the `authentication` relationship authorizes a key to show. `assertionMethod` authorizes a key to make attestations that a third party may rely on in its own right. A *producer* **SHOULD NOT** sign a *Trust Task document* with `assertionMethod` unless the governing *Trust Task specification* defines the document's proof as such an attestation ([Specification Requirements](#specification-requirements) item 8). A key an *issuer* keeps for its day-to-day operation is then never required to hold attestation authority.
+
+The rules above do not depend on which purpose a *producer* chose: a *consumer* checks the relationship the `proof` names. A *Trust Task specification* **MAY** require a particular `proofPurpose` for its documents, stating it with its proof requirement, and a *consumer* **MAY** apply such a requirement as local policy. During a migration an *issuer* can therefore list a key under both relationships, so that proofs made before and after the change both verify.
 
 ### The `issuer` and `recipient` Members
 
@@ -1086,7 +1090,7 @@ Under `identityMismatch` a *consumer* **SHOULD** omit `inResponseTo.id`: per [Th
 >     "cryptosuite": "eddsa-jcs-2022",
 >     "verificationMethod": "did:web:maintainer.example#key-1",
 >     "created": "2026-06-11T14:05:00Z",
->     "proofPurpose": "assertionMethod",
+>     "proofPurpose": "authentication",
 >     "proofValue": "z58D..."
 >   }
 > }
