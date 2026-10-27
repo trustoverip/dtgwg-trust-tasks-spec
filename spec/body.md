@@ -1067,6 +1067,8 @@ A *conforming Trust Task specification* **MUST** declare each of the following. 
 
 22. **Extended version (`extends`, where declared)** — a specification **MAY** declare `extends` with the `MAJOR.MINOR` of an earlier version of its own slug and `MAJOR`, promising that it is a backwards-compatible extension of that version as [Compatibility Rules](#compatibility-rules) defines. A specification **MUST NOT** declare `extends` unless its payload schema bears the promise out, and the named version **MUST** exist.
 
+23. **Carried protocol (`carries`, where declared)** — a specification that carries an operation of a protocol defined outside this framework **MUST** declare it in a `carries` front-matter object, with `protocol` (the protocol's name), `version` (the version of the protocol it carries), `reference` (a URI of the document that defines the protocol) and `operation` (the protocol's own name for the operation), and **MUST** meet [Carried Protocols](#carried-protocols). A specification **MUST NOT** declare `carries` for a protocol whose requirements it departs from.
+
 A worked example of a *Trust Task specification* satisfying these requirements appears in [Appendix A](#appendix-a-example-trust-task-specification).
 
 ## Error Responses
@@ -1388,6 +1390,24 @@ A private *transport binding* — one not published through the registry — is 
    urn:example:tasks:binding:<slug-segments>:<MAJOR.MINOR>
    ```
 4. A binding URI is a name, compared by exact string equality. Only an `https` binding URI is dereferenced; a binding named in any other scheme is distributed out of band.
+
+### Carried Protocols
+
+A [[ref: carried protocol]] is a protocol defined outside this framework — a trust-registry query protocol, a protocol for proffering privacy terms — that uses *Trust Task documents* as its interface, the way it might use an HTTP API. The *Trust Task specifications* that carry it are its [[ref: protocol family]]. The two layers point in opposite directions: a *transport binding* carries *Trust Task documents*, and a *protocol family* is carried by them. The carried protocol keeps its own meaning. What the *protocol family* adds is what every *Trust Task document* has — a `proof`, *VID*-based identity, the freshness and duplicate-execution rules of [Consumer Requirements](#consumer-requirements), a task digest for citation, the dispositions of [Error Responses](#error-responses), discovery, and every *transport binding* — so a protocol gains them by being carried, without defining any of them itself.
+
+A *Trust Task specification* that declares `carries` ([Specification Requirements](#specification-requirements) item 23) **MUST** meet the following:
+
+1. **One specification per operation.** It carries exactly one operation of the *carried protocol*, as its request, and that operation's answer, as its success response. A *protocol family* **MUST NOT** define an operation the *carried protocol* does not define. An operation the protocol defines without an answer is a fire-and-forget task ([Specification Requirements](#specification-requirements) item 7).
+2. **A member mapping, and no new meaning.** The specification **MUST** state, for each field of the protocol operation, the `payload` member that carries it, or the envelope member that does where the protocol's field is the document's issuer, addressee or a timestamp. It **MAY** rename fields to follow [Naming Conventions](#naming-conventions), and **MUST** state each renaming. It **MUST NOT** give a member a meaning the protocol does not give the field.
+3. **The protocol's answers are outcomes.** Every answer the protocol operation can give, a negative one included, is reported in the success response ([A decision is not a failure](#error-responses)). An *error response* reports only that the operation was not performed: the document did not validate, the requester may not invoke it, or the *recipient party* could not complete it, using the [Standard Error Codes](#standard-error-codes) or task-specific codes.
+4. **Versions move together.** The specification **MUST** name the version of the *carried protocol* it carries. A change to the protocol that changes the operation's fields or answers is carried by a new version of the specification, which declares `extends` ([Compatibility Rules](#compatibility-rules)) where the change only adds.
+5. **Parties are mapped.** The specification **MUST** state which of the protocol's roles is the document's `issuer` and which its `recipient`. Where the protocol requires a party identifier the envelope does not carry, it **MUST** state what supplies it.
+6. **No departures.** The specification **MUST NOT** change what the *carried protocol* requires. Where some requirement of the protocol cannot be expressed in a *Trust Task document*, the specification **MUST** say which and why, and **MUST NOT** substitute a rule of its own. Behaviour beyond the protocol — an extra step, a check the protocol does not make — belongs to a separate *Trust Task specification* that does not declare `carries` for that protocol, and a ceremony can compose the two ([The `ceremony` Member](#the-ceremony-member)).
+7. **Conformance stays with the protocol.** Whether an implementation implements the *carried protocol* correctly is defined by that protocol. Conformance to this framework covers the carriage: the envelope, the proof, the mapping, and the outcome reported as the success response.
+
+*This paragraph is non-normative.* A *protocol family* has one specification per operation, not one generic specification carrying `{ protocol, operation, body }`, because everything this framework checks depends on knowing the operation: the payload schema a *consumer* validates against, the proof requirement and side-effect class a specification declares, the error codes it defines, and the *Type URI* a discovery response lists. A generic specification would validate an envelope around an opaque body. Where a protocol needs only its bytes moved, it is using this framework as a transport, and its own transport serves it better.
+
+A *protocol family* **MAY** be published under the *carried protocol* owner's own authority ([Private and Unpublished Trust Task Specifications](#private-and-unpublished-trust-task-specifications)), and **SHOULD** be published or endorsed by that owner where the owner takes part, as it would publish an HTTP binding of its protocol.
 
 ## Discovery and Capability Negotiation
 
