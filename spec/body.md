@@ -1183,9 +1183,12 @@ The framework defines the error codes listed below. A *conforming consumer* **MU
 | `cancelled` | The *consumer* stopped the task on its own initiative — operator action, policy, capacity, or a compliance hold. Distinct from a *producer*-requested cancellation, which is answered by a response to the control document ([Task Control](#task-control)). | `false` |
 | `taskFailed` | The *recipient party* attempted the task and could not complete it; further detail **SHOULD** appear in `details`. | varies |
 | `unavailable` | The *recipient party* is temporarily unable to process the task. | `true` |
+| `indeterminate` | The *recipient party* could not decide, because something it needed and does not control could not be obtained or checked — for example the schema behind a `type`, the material behind a `verificationMethod`, a status list, or a referenced document whose digest no longer matches. It neither refused the task nor found the document invalid. | `true` |
 | `internalError` | The *recipient party* encountered an unexpected internal failure. | `true` |
 
 The "Default `retryable`" column gives the value an emitter of an error response **SHOULD** use unless task-specific knowledge dictates otherwise. The actual `retryable` value carried in a given *error response* is authoritative.
+
+**`indeterminate` is a result of its own.** Three codes can follow a failure to verify or resolve something, and they report different facts. `proofInvalid` says verification ran and the proof did not hold. `unavailable` says the *recipient party* itself is not able to process the task now: its own capacity, or a dependency it operates. `indeterminate` says the *recipient party* could not reach a determination because a reference published by someone else could not be obtained or checked. It is neither a refusal nor a verdict on the document. A *recipient party* returning it **SHOULD** say in `details` which kind of reference could not be obtained (a schema, a verification method, a status list, a referenced document), within the limits of [What a `message` May Not Say](#what-a-message-may-not-say), and **MUST NOT** return `proofInvalid` or `permissionDenied` in its place. A *party* that retains an `indeterminate` error as evidence **MUST NOT** read it as either. Where a *consumer*'s policy lets it proceed although a determination is indeterminate, that is a decision under its policy; the determination stays indeterminate, and the *consumer* **MUST NOT** record it as verified.
 
 #### Effects Reported with `cancelled`
 
