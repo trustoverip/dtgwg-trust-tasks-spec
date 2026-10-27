@@ -1877,6 +1877,11 @@ urn:example:tasks:spec:&lt;slug-segments&gt;:&lt;MAJOR.MINOR&gt;
 <td><code>true</code></td>
 </tr>
 <tr>
+<td><code>indeterminate</code></td>
+<td>The <em>recipient party</em> could not decide, because something it needed and does not control could not be obtained or checked — for example the schema behind a <code>type</code>, the material behind a <code>verificationMethod</code>, a status list, or a referenced document whose digest no longer matches. It neither refused the task nor found the document invalid.</td>
+<td><code>true</code></td>
+</tr>
+<tr>
 <td><code>internalError</code></td>
 <td>The <em>recipient party</em> encountered an unexpected internal failure.</td>
 <td><code>true</code></td>
@@ -1884,6 +1889,7 @@ urn:example:tasks:spec:&lt;slug-segments&gt;:&lt;MAJOR.MINOR&gt;
 </tbody>
 </table>
 </div><p>The “Default <code>retryable</code>” column gives the value an emitter of an error response <strong>SHOULD</strong> use unless task-specific knowledge dictates otherwise. The actual <code>retryable</code> value carried in a given <em>error response</em> is authoritative.</p>
+<p><strong><code>indeterminate</code> is a result of its own.</strong> Three codes can follow a failure to verify or resolve something, and they report different facts. <code>proofInvalid</code> says verification ran and the proof did not hold. <code>unavailable</code> says the <em>recipient party</em> itself is not able to process the task now: its own capacity, or a dependency it operates. <code>indeterminate</code> says the <em>recipient party</em> could not reach a determination because a reference published by someone else could not be obtained or checked. It is neither a refusal nor a verdict on the document. A <em>recipient party</em> returning it <strong>SHOULD</strong> say in <code>details</code> which kind of reference could not be obtained (a schema, a verification method, a status list, a referenced document), within the limits of <a href="#what-a-message-may-not-say">What a <code>message</code> May Not Say</a>, and <strong>MUST NOT</strong> return <code>proofInvalid</code> or <code>permissionDenied</code> in its place. A <em>party</em> that retains an <code>indeterminate</code> error as evidence <strong>MUST NOT</strong> read it as either. Where a <em>consumer</em>’s policy lets it proceed although a determination is indeterminate, that is a decision under its policy; the determination stays indeterminate, and the <em>consumer</em> <strong>MUST NOT</strong> record it as verified.</p>
 <h4 id="effects-reported-with-cancelled" tabindex="-1"><a class="toc-anchor d-print-none" href="#effects-reported-with-cancelled">§</a> Effects Reported with <code>cancelled</code></h4>
 <p>A <em>consumer</em> emitting <code>cancelled</code> has stopped work it had accepted, and <a href="#consumer-requirements">Consumer Requirements</a> item 12 already obliges it to distinguish <strong>partial execution</strong> from a task that was never begun — because a <em>producer</em> that cannot tell the two apart cannot decide whether to reissue, and because <a href="#control-does-not-roll-back">Control Does Not Roll Back</a> makes clear that nothing is undone by stopping. What that obligation lacked was a shape: the same fact, reported to the same <em>producer</em>, is machine-readable when the <em>producer</em> asked for the stop and prose when the <em>consumer</em> decided on it.</p>
 <p>The framework therefore defines the <code>details</code> shape for the <code>cancelled</code> code as a single member, <code>effects</code>, whose value is an array of effect objects:</p>
@@ -2829,8 +2835,8 @@ This work is licensed under a Creative Commons Attribution 4.0 International Lic
                 <div id="build-info" class="small text-muted">
                     <div class="d-flex align-items-center mb-1">
                         <i class="bi bi-calendar-event me-2" aria-hidden="true"></i>
-                        <time class="timestamp" datetime="2026-10-27T16:05:13.573Z">
-                            Generated: 2026-10-27T16:05:13.573Z
+                        <time class="timestamp" datetime="2026-10-27T16:07:08.463Z">
+                            Generated: 2026-10-27T16:07:08.463Z
                         </time>
                     </div>
                     <div class="d-flex align-items-center mb-1">
