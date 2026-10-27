@@ -1678,6 +1678,8 @@ urn:example:tasks:spec:&lt;slug-segments&gt;:&lt;MAJOR.MINOR&gt;
 <li>An <strong>error response</strong> uses the framework’s distinct <code>trust-task-error</code> <em>Type URI</em> (defined below). Its payload shape is defined by this framework, independent of the originating specification.</li>
 </ul>
 <p>A <em>recipient party</em> <strong>MUST NOT</strong> report failure by emitting a <code>#response</code>-variant document of the originating spec, nor success by emitting a <code>trust-task-error</code> document. The two reply types are not interchangeable.</p>
+<p><strong>A decision is not a failure.</strong> Some tasks exist to produce a decision: to admit or refuse a join request, to accept, counter or reject a proposed agreement, to answer whether an entity is authorized for an action. For such a task every decision it can produce, a negative one included, is the task’s <strong>outcome</strong>, and is reported in the success response. “Failure” in the rule above means the task was <strong>not performed</strong>: the document did not validate, the requesting <em>party</em> may not invoke the task (<code>permissionDenied</code>), or the <em>recipient party</em> could not complete it. The distinction is the one <a href="#consumer-requirements">Consumer Requirements</a> item 10 draws between whether a <em>party</em> may ask and what the answer is: <code>permissionDenied</code> says the requester may not ask, and a refusal carried in the success response says it asked and the answer is no. A signed negative decision is then evidence of the same kind as a signed positive one, which a relying party can retain and cite (<a href="#binding-a-citation-to-the-document-it-names">Binding a Citation to the Document It Names</a>), and a <em>producer</em> never has to read a decision out of an error code it may not recognize.</p>
+<p>Accordingly, a <em>Trust Task specification</em> whose task produces a decision <strong>SHOULD</strong> define every decision it can produce in its success-response schema, and <strong>SHOULD NOT</strong> declare a task-specific error code (<a href="#extension-by-individual-trust-task-specifications">Extension by Individual Trust Task Specifications</a>) whose meaning is one of those decisions. A <em>recipient party</em> reports a decision in the form its specification defines.</p>
 <h3 id="the-trust-task-error-specification" tabindex="-1"><a class="toc-anchor d-print-none" href="#the-trust-task-error-specification">§</a> The trust-task-error Specification</h3>
 <p>The framework reserves the slug <code>trust-task-error</code> for the error-response <em>Trust Task specification</em> at:</p>
 <pre><code>https://trusttasks.org/spec/trust-task-error/&lt;MAJOR.MINOR&gt;
@@ -2812,8 +2814,8 @@ This work is licensed under a Creative Commons Attribution 4.0 International Lic
                 <div id="build-info" class="small text-muted">
                     <div class="d-flex align-items-center mb-1">
                         <i class="bi bi-calendar-event me-2" aria-hidden="true"></i>
-                        <time class="timestamp" datetime="2026-10-27T15:59:21.415Z">
-                            Generated: 2026-10-27T15:59:21.415Z
+                        <time class="timestamp" datetime="2026-10-27T16:00:41.877Z">
+                            Generated: 2026-10-27T16:00:41.877Z
                         </time>
                     </div>
                     <div class="d-flex align-items-center mb-1">
