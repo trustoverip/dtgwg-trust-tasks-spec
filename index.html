@@ -1444,6 +1444,9 @@ urn:example:tasks:spec:&lt;slug-segments&gt;:&lt;MAJOR.MINOR&gt;
 <li>
 <p><strong>Lifecycle and discovery.</strong> A shared schema component <strong>SHOULD</strong> declare its own <code>status</code> (<a href="#maturity-levels">Maturity Levels</a>) and <strong>MAY</strong> declare <code>supersededBy</code> when retired or withdrawn, and is superseded and withdrawn on the same terms as a specification (<a href="#superseded-and-withdrawn-versions">Superseded and Withdrawn Versions</a>). The registry <strong>SHOULD</strong> surface shared schema components and their versions alongside specifications, so that implementers can see which specification versions depend on which component versions.</p>
 </li>
+<li>
+<p><strong>No governance defaults.</strong> A shared schema component <strong>MUST NOT</strong> supply a <code>default</code> for a governance value: a threshold or quorum, a time-to-live or validity period, a role, an evaluation order, or any other value a community’s policy chooses. Wherever the component’s definition is used, a member carrying such a value is <strong>required</strong>, and a document that omits it fails payload validation and is refused with <code>malformedRequest</code>. JSON Schema’s <code>default</code> is an annotation a validator does not apply, but code generators and form builders do, so it reaches the wire as a value. A default would turn an omission into a policy nobody chose: a <em>producer</em> whose policy engine supplied no threshold would send a quorum of one, and nothing in the document would show the difference. It would also carry one community’s governance into every specification that references the component. A <em>Trust Task specification</em> <strong>SHOULD NOT</strong> supply such a default in its own payload schema either, and where it does, <strong>MUST</strong> state the value in its prose as that specification’s own choice.</p>
+</li>
 </ol>
 <h3 id="ceremony-namespace" tabindex="-1"><a class="toc-anchor d-print-none" href="#ceremony-namespace">§</a> Ceremony Namespace</h3>
 <p>A <a class="term-reference" href="#term:ceremony-definition">ceremony definition</a> — the published description of a flow composed of several <a class="term-reference" href="#term:trust-tasks">Trust Tasks</a>, referenced by the <code>ceremony.definition</code> member of <a href="#the-ceremony-member">The <code>ceremony</code> Member</a> — is identified by a URI in the <code>/ceremony/</code> subtree of the framework’s authority:</p>
@@ -2820,8 +2823,8 @@ This work is licensed under a Creative Commons Attribution 4.0 International Lic
                 <div id="build-info" class="small text-muted">
                     <div class="d-flex align-items-center mb-1">
                         <i class="bi bi-calendar-event me-2" aria-hidden="true"></i>
-                        <time class="timestamp" datetime="2026-10-27T16:02:50.736Z">
-                            Generated: 2026-10-27T16:02:50.736Z
+                        <time class="timestamp" datetime="2026-10-27T16:03:26.034Z">
+                            Generated: 2026-10-27T16:03:26.034Z
                         </time>
                     </div>
                     <div class="d-flex align-items-center mb-1">
