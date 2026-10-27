@@ -1074,6 +1074,10 @@ The framework distinguishes the two reply forms cleanly:
 
 A *recipient party* **MUST NOT** report failure by emitting a `#response`-variant document of the originating spec, nor success by emitting a `trust-task-error` document. The two reply types are not interchangeable.
 
+**A decision is not a failure.** Some tasks exist to produce a decision: to admit or refuse a join request, to accept, counter or reject a proposed agreement, to answer whether an entity is authorized for an action. For such a task every decision it can produce, a negative one included, is the task's **outcome**, and is reported in the success response. "Failure" in the rule above means the task was **not performed**: the document did not validate, the requesting *party* may not invoke the task (`permissionDenied`), or the *recipient party* could not complete it. The distinction is the one [Consumer Requirements](#consumer-requirements) item 10 draws between whether a *party* may ask and what the answer is: `permissionDenied` says the requester may not ask, and a refusal carried in the success response says it asked and the answer is no. A signed negative decision is then evidence of the same kind as a signed positive one, which a relying party can retain and cite ([Binding a Citation to the Document It Names](#binding-a-citation-to-the-document-it-names)), and a *producer* never has to read a decision out of an error code it may not recognize.
+
+Accordingly, a *Trust Task specification* whose task produces a decision **SHOULD** define every decision it can produce in its success-response schema, and **SHOULD NOT** declare a task-specific error code ([Extension by Individual Trust Task Specifications](#extension-by-individual-trust-task-specifications)) whose meaning is one of those decisions. A *recipient party* reports a decision in the form its specification defines.
+
 ### The trust-task-error Specification
 
 The framework reserves the slug `trust-task-error` for the error-response *Trust Task specification* at:
