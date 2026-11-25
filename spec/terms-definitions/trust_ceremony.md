@@ -1,3 +1,3 @@
 [[def: Trust Ceremony, Trust Ceremonies, trust ceremony]]
 
-~ A flow composed of several *Trust Tasks*, optionally described by a published *ceremony definition*. Named here because a *Trust Task document* may record its membership of one; see [The `ceremony` Member](#the-ceremony-member).
+~ The governed procedure by which a requested transition is decided and, if allowed, carried out. Each *party*'s decision within it is reached by a policy engine through seven stage gates (trigger, gather, verify, facts, evaluate, verdict, effects), ending in one of four *verdicts*. A ceremony usually exchanges several *Trust Tasks*, which form its flow. Where it needs several *parties*' decisions, each is a step of the same *enactment*. A ceremony may be described by a published *ceremony definition*. See [Trust Ceremonies](#trust-ceremonies) and [The `ceremony` Member](#the-ceremony-member).
